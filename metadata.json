@@ -1,0 +1,8 @@
+{
+  "name": "HorKathaSantali",
+  "description": "Complete Santali language suite with Santali Devanagari keyboard, 10,000+ word dictionary, cultural festivals chronicles, AI search assistant with Google search grounding, and translator by BOSC Tech & Edu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,477 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    font-size: 16.5px;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    color: #0f172a;
+    background-color: #f8fafc;
+    line-height: 1.55;
+    overflow-x: hidden;
+  }
+  button, a, select {
+    touch-action: manipulation;
+  }
+}
+
+.font-santali-dev {
+  font-family: 'Noto Sans Devanagari', 'Plus Jakarta Sans', sans-serif;
+}
+
+.font-serif-culture {
+  font-family: 'Cinzel', serif;
+}
+
+.cv-auto,
+footer[data-edit-region="global_footer"] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 380px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom scrollbar for sleek desktop and mobile feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm 14mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 12pt !important;
+    overflow: visible !important;
+  }
+
+  main[data-workspace-main="true"] {
+    zoom: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  [data-admin-ui="true"],
+  [data-reader-bar="true"] {
+    display: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   HOR KATHA SUITE — UNIVERSAL LIGHT THEME CONSTITUTION
+   Ensures all 200+ sections render on clean bright surfaces with crisp,
+   high-contrast ink while preserving solid buttons, small icon badges,
+   uploaded photo overlays, device bezels, and canvases.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+main[data-workspace-main="true"] {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* 1. Outer Dark Cards, Hero Banners & Sections -> Clean Light Surface */
+main[data-workspace-main="true"]
+  :is(div, section, header, footer, article, aside, form, table, blockquote, details):not(
+    .inset-0
+  ):not(.w-5):not(.w-6):not(.w-7):not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.w-12):not(
+    .w-14
+  ):not(.w-16):not([data-slideshow-media="true"]):not([data-slideshow-media="true"] *):not(
+    [data-device-bezel="true"]
+  ):not([data-device-bezel="true"] *):not([data-preserve-visual="true"]):not(
+    [data-preserve-visual="true"] *
+  ):is(
+    [class*="bg-slate-9"],
+    [class*="bg-slate-8"],
+    [class*="bg-slate-7"],
+    [class*="bg-stone-9"],
+    [class*="bg-stone-8"],
+    [class*="bg-zinc-9"],
+    [class*="bg-zinc-8"],
+    [class*="bg-neutral-9"],
+    [class*="bg-gray-9"],
+    [class*="bg-gray-8"],
+    [class*="bg-indigo-9"],
+    [class*="bg-indigo-8"],
+    [class*="bg-amber-9"],
+    [class*="bg-amber-8"],
+    [class*="bg-emerald-9"],
+    [class*="bg-emerald-8"],
+    [class*="bg-teal-9"],
+    [class*="bg-teal-8"],
+    [class*="bg-rose-9"],
+    [class*="bg-rose-8"],
+    [class*="bg-purple-9"],
+    [class*="bg-purple-8"],
+    [class*="bg-cyan-9"],
+    [class*="bg-sky-9"],
+    [class*="bg-blue-9"],
+    [class*="bg-blue-8"],
+    [class*="bg-violet-9"],
+    [class*="bg-fuchsia-9"],
+    [class*="bg-yellow-9"],
+    [class*="bg-red-9"],
+    [class*="bg-orange-9"],
+    [class*="bg-green-9"],
+    [class*="from-slate-9"],
+    [class*="from-slate-8"],
+    [class*="from-stone-9"],
+    [class*="from-stone-8"],
+    [class*="from-zinc-9"],
+    [class*="from-neutral-9"],
+    [class*="from-gray-9"],
+    [class*="from-amber-9"],
+    [class*="from-amber-8"],
+    [class*="from-amber-7"],
+    [class*="from-amber-6"],
+    [class*="from-indigo-9"],
+    [class*="from-indigo-8"],
+    [class*="from-indigo-7"],
+    [class*="from-emerald-9"],
+    [class*="from-emerald-8"],
+    [class*="from-emerald-7"],
+    [class*="from-emerald-6"],
+    [class*="from-teal-9"],
+    [class*="from-teal-8"],
+    [class*="from-teal-7"],
+    [class*="from-teal-6"],
+    [class*="from-rose-9"],
+    [class*="from-rose-8"],
+    [class*="from-rose-7"],
+    [class*="from-rose-6"],
+    [class*="from-purple-9"],
+    [class*="from-purple-8"],
+    [class*="from-purple-7"],
+    [class*="from-cyan-9"],
+    [class*="from-cyan-7"],
+    [class*="from-sky-9"],
+    [class*="from-sky-7"],
+    [class*="from-blue-9"],
+    [class*="from-blue-8"],
+    [class*="from-blue-7"],
+    [class*="from-blue-6"],
+    [class*="from-orange-9"],
+    [class*="from-orange-7"],
+    [class*="from-orange-6"],
+    [class*="from-green-9"],
+    [class*="from-green-7"],
+    [class*="from-violet-9"],
+    [class*="from-fuchsia-9"],
+    [class*="from-yellow-9"],
+    [class*="from-red-9"],
+    [class*="from-red-7"]
+  ) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* 2. Nested Translucent Sub-Panels, Callouts & Badges -> Soft Slate-50 Hierarchy */
+main[data-workspace-main="true"]
+  :is(div, section, article, blockquote, li, tr, td, th, ul, ol, span):not(.inset-0):not(
+    .w-5
+  ):not(.w-6):not(.w-7):not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.w-12):not(.w-14):not(
+    .w-16
+  ):not([data-slideshow-media="true"]):not([data-slideshow-media="true"] *):not(
+    [data-device-bezel="true"]
+  ):not([data-device-bezel="true"] *):not([data-preserve-visual="true"]):not(
+    [data-preserve-visual="true"] *
+  ):is(
+    [class*="bg-black"],
+    [class*="bg-white/5"],
+    [class*="bg-white/10"],
+    [class*="bg-white/15"],
+    [class*="bg-white/20"],
+    [class*="bg-white/25"]
+  ) {
+  background-color: #f8fafc !important;
+  background-image: none !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* 3. Convert white/translucent borders into visible hairline slate borders */
+main[data-workspace-main="true"]
+  :is(div, section, article, table, thead, tbody, tr, td, th, ul, li, span):not(
+    [data-slideshow-media="true"]
+  ):not([data-slideshow-media="true"] *):not([data-device-bezel="true"]):not(
+    [data-device-bezel="true"] *
+  ):is([class*="border-white/"], [class*="divide-white/"]) {
+  border-color: #e2e8f0 !important;
+}
+
+/* 4. Readable Light-Theme Typography & Semantic Accent Ink Mapping */
+main[data-workspace-main="true"]
+  :not(button):not(a):not(label):not(svg):not([data-slideshow-media="true"]):not(
+    [data-slideshow-media="true"] *
+  ):not([data-device-bezel="true"]):not([data-device-bezel="true"] *):not(
+    [data-preserve-visual="true"]
+  ):not([data-preserve-visual="true"] *):is(
+    [class*="text-white"],
+    [class*="text-slate-1"],
+    [class*="text-slate-2"],
+    [class*="text-stone-1"],
+    [class*="text-stone-2"],
+    [class*="text-gray-1"],
+    [class*="text-gray-2"],
+    [class*="text-zinc-1"],
+    [class*="text-zinc-2"],
+    [class*="text-neutral-1"],
+    [class*="text-neutral-2"]
+  ) {
+  color: #0f172a !important;
+}
+
+main[data-workspace-main="true"]
+  :not(button):not(a):not(label):not(svg):not([data-slideshow-media="true"]):not(
+    [data-slideshow-media="true"] *
+  ):not([data-device-bezel="true"]):not([data-device-bezel="true"] *):not(
+    [data-preserve-visual="true"]
+  ):not([data-preserve-visual="true"] *):is(
+    [class*="text-slate-3"],
+    [class*="text-stone-3"],
+    [class*="text-gray-3"],
+    [class*="text-zinc-3"],
+    [class*="text-neutral-3"]
+  ) {
+  color: #334155 !important;
+}
+
+main[data-workspace-main="true"]
+  :not(button):not(a):not(label):not(svg):not([data-slideshow-media="true"]):not(
+    [data-slideshow-media="true"] *
+  ):not([data-device-bezel="true"]):not([data-device-bezel="true"] *):not(
+    [data-preserve-visual="true"]
+  ):not([data-preserve-visual="true"] *):is(
+    [class*="text-amber-1"],
+    [class*="text-amber-2"],
+    [class*="text-amber-3"],
+    [class*="text-yellow-1"],
+    [class*="text-yellow-2"],
+    [class*="text-yellow-3"],
+    [class*="text-orange-1"],
+    [class*="text-orange-2"],
+    [class*="text-orange-3"]
+  ) {
+  color: #92400e !important;
+}
+
+main[data-workspace-main="true"]
+  :not(button):not(a):not(label):not(svg):not([data-slideshow-media="true"]):not(
+    [data-slideshow-media="true"] *
+  ):not([data-device-bezel="true"]):not([data-device-bezel="true"] *):not(
+    [data-preserve-visual="true"]
+  ):not([data-preserve-visual="true"] *):is(
+    [class*="text-sky-1"],
+    [class*="text-sky-2"],
+    [class*="text-sky-3"],
+    [class*="text-blue-1"],
+    [class*="text-blue-2"],
+    [class*="text-blue-3"],
+    [class*="text-cyan-1"],
+    [class*="text-cyan-2"],
+    [class*="text-cyan-3"]
+  ) {
+  color: #075985 !important;
+}
+
+main[data-workspace-main="true"]
+  :not(button):not(a):not(label):not(svg):not([data-slideshow-media="true"]):not(
+    [data-slideshow-media="true"] *
+  ):not([data-device-bezel="true"]):not([data-device-bezel="true"] *):not(
+    [data-preserve-visual="true"]
+  ):not([data-preserve-visual="true"] *):is(
+    [class*="text-indigo-1"],
+    [class*="text-indigo-2"],
+    [class*="text-indigo-3"],
+    [class*="text-purple-1"],
+    [class*="text-purple-2"],
+    [class*="text-purple-3"],
+    [class*="text-violet-1"],
+    [class*="text-violet-2"],
+    [class*="text-violet-3"]
+  ) {
+  color: #4338ca !important;
+}
+
+main[data-workspace-main="true"]
+  :not(button):not(a):not(label):not(svg):not([data-slideshow-media="true"]):not(
+    [data-slideshow-media="true"] *
+  ):not([data-device-bezel="true"]):not([data-device-bezel="true"] *):not(
+    [data-preserve-visual="true"]
+  ):not([data-preserve-visual="true"] *):is(
+    [class*="text-emerald-1"],
+    [class*="text-emerald-2"],
+    [class*="text-emerald-3"],
+    [class*="text-teal-1"],
+    [class*="text-teal-2"],
+    [class*="text-teal-3"],
+    [class*="text-green-1"],
+    [class*="text-green-2"],
+    [class*="text-green-3"]
+  ) {
+  color: #065f46 !important;
+}
+
+main[data-workspace-main="true"]
+  :not(button):not(a):not(label):not(svg):not([data-slideshow-media="true"]):not(
+    [data-slideshow-media="true"] *
+  ):not([data-device-bezel="true"]):not([data-device-bezel="true"] *):not(
+    [data-preserve-visual="true"]
+  ):not([data-preserve-visual="true"] *):is(
+    [class*="text-rose-1"],
+    [class*="text-rose-2"],
+    [class*="text-rose-3"],
+    [class*="text-pink-1"],
+    [class*="text-pink-2"],
+    [class*="text-pink-3"],
+    [class*="text-red-1"],
+    [class*="text-red-2"],
+    [class*="text-red-3"],
+    [class*="text-fuchsia-1"],
+    [class*="text-fuchsia-2"]
+  ) {
+  color: #9f1239 !important;
+}
+
+/* 5. Preserve White Text/Icons Inside Solid Colored Buttons & Small Icon Tiles */
+main[data-workspace-main="true"]
+  :is(button, a, label):is(
+    [class*="bg-amber-6"],
+    [class*="bg-amber-7"],
+    [class*="bg-emerald-6"],
+    [class*="bg-emerald-7"],
+    [class*="bg-rose-6"],
+    [class*="bg-rose-7"],
+    [class*="bg-red-6"],
+    [class*="bg-red-7"],
+    [class*="bg-sky-6"],
+    [class*="bg-sky-7"],
+    [class*="bg-blue-6"],
+    [class*="bg-blue-7"],
+    [class*="bg-indigo-6"],
+    [class*="bg-indigo-7"],
+    [class*="bg-teal-6"],
+    [class*="bg-teal-7"],
+    [class*="bg-purple-6"],
+    [class*="bg-orange-6"],
+    [class*="bg-slate-8"],
+    [class*="bg-slate-9"],
+    [class*="bg-stone-9"],
+    [class*="from-amber-6"],
+    [class*="from-emerald-6"],
+    [class*="from-blue-6"],
+    [class*="from-indigo-6"],
+    [class*="from-rose-6"]
+  ),
+main[data-workspace-main="true"]
+  :is(button, a, label):is(
+    [class*="bg-amber-6"],
+    [class*="bg-amber-7"],
+    [class*="bg-emerald-6"],
+    [class*="bg-emerald-7"],
+    [class*="bg-rose-6"],
+    [class*="bg-rose-7"],
+    [class*="bg-red-6"],
+    [class*="bg-red-7"],
+    [class*="bg-sky-6"],
+    [class*="bg-sky-7"],
+    [class*="bg-blue-6"],
+    [class*="bg-blue-7"],
+    [class*="bg-indigo-6"],
+    [class*="bg-indigo-7"],
+    [class*="bg-teal-6"],
+    [class*="bg-teal-7"],
+    [class*="bg-purple-6"],
+    [class*="bg-orange-6"],
+    [class*="bg-slate-8"],
+    [class*="bg-slate-9"],
+    [class*="bg-stone-9"],
+    [class*="from-amber-6"],
+    [class*="from-emerald-6"],
+    [class*="from-blue-6"],
+    [class*="from-indigo-6"],
+    [class*="from-rose-6"]
+  )
+  :is(span, svg) {
+  color: #ffffff !important;
+}
+
+/* Preserve white icon color inside small square/circle feature icon containers */
+main[data-workspace-main="true"]
+  :is(.w-6, .w-7, .w-8, .w-9, .w-10, .w-11, .w-12, .w-14, .w-16)[class*="text-white"],
+main[data-workspace-main="true"]
+  :is(.w-6, .w-7, .w-8, .w-9, .w-10, .w-11, .w-12, .w-14, .w-16)[class*="text-white"]
+  :is(span, svg) {
+  color: #ffffff !important;
+}
+
+/* 6. Translucent/Ghost Buttons Inside Cards -> Crisp Light Slate Buttons */
+main[data-workspace-main="true"]
+  button:not([data-slideshow-media="true"] *):is(
+    [class*="bg-white/1"],
+    [class*="bg-white/2"],
+    [class*="bg-black/2"],
+    [class*="bg-black/3"],
+    [class*="bg-black/4"],
+    [class*="bg-black/5"]
+  ) {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+main[data-workspace-main="true"]
+  button:not([data-slideshow-media="true"] *):is(
+    [class*="bg-white/1"],
+    [class*="bg-white/2"],
+    [class*="bg-black/2"],
+    [class*="bg-black/3"],
+    [class*="bg-black/4"],
+    [class*="bg-black/5"]
+  )
+  :is(span, svg) {
+  color: #0f172a !important;
+}
+
+/* 7. Bright Crisp Inputs, Textareas & Selects Across All Modules */
+main[data-workspace-main="true"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+main[data-workspace-main="true"] textarea,
+main[data-workspace-main="true"] select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+main[data-workspace-main="true"] input::placeholder,
+main[data-workspace-main="true"] textarea::placeholder {
+  color: #64748b !important;
+}
