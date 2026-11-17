@@ -6,6 +6,14 @@ interface KVNamespaceLike {
 interface CloudflareEnv {
   HOR_KATHA_KV?: KVNamespaceLike;
   GEMINI_API_KEY?: string;
+  RESEND_API_KEY?: string;
+  ADMIN_OTP_FROM_EMAIL?: string;
+  ADMIN_OTP_WEBHOOK_URL?: string;
+  EMAILJS_SERVICE_ID?: string;
+  EMAILJS_TEMPLATE_ID?: string;
+  EMAILJS_PUBLIC_KEY?: string;
+  EMAILJS_PRIVATE_KEY?: string;
+  DEFAULT_ADMIN_PASSWORD?: string;
 }
 
 interface PagesEventContext {
@@ -75,6 +83,17 @@ interface AdminOperatorRecord {
   updatedAt: number;
 }
 
+interface AdminAuthRecord {
+  passwordHash?: string;
+  passwordSalt?: string;
+  otpHash?: string;
+  otpSalt?: string;
+  otpExpiresAt?: number;
+  otpAttempts?: number;
+  lastOtpSentAt?: number;
+  updatedAt?: number;
+}
+
 interface PersistentStore {
   adminGlobalState: {
     officialFestivalOverrides?: Record<string, { date: string; time: string; note?: string }>;
@@ -88,6 +107,7 @@ interface PersistentStore {
   communityVoiceNotes: CommunityVoiceNote[];
   villageEventNotices: VillageEventNotice[];
   operators: AdminOperatorRecord[];
+  adminAuth?: AdminAuthRecord;
 }
 
 const SUPER_ADMIN_EMAIL = 'bosctechedu@gmail.com';
@@ -99,7 +119,8 @@ let isolateMemoryStore: PersistentStore = {
   communityWordSubmissions: [],
   communityVoiceNotes: [],
   villageEventNotices: [],
-  operators: []
+  operators: [],
+  adminAuth: {}
 };
 
 function isSuperAdminReq(request: Request): boolean {
@@ -118,6 +139,220 @@ function isEditorialAdminReq(request: Request, store: PersistentStore): boolean 
     );
   }
   return false;
+}
+
+function randomHex(bytesLen = 16): string {
+  const bytes = new Uint8Array(bytesLen);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function generateSixDigitOtp(): string {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return String(100000 + (buf[0] % 900000));
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hashSecretWithSalt(secret: string, salt?: string): Promise<{ salt: string; hash: string }> {
+  const finalSalt = salt || randomHex(16);
+  const hash = await sha256Hex(`${finalSalt}::${secret}`);
+  return { salt: finalSalt, hash };
+}
+
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function cleanEnvVar(value?: string): string {
+  return String(value || '').trim().replace(/^["']|["']$/g, '').trim();
+}
+
+function toBase64Url(str: string): string {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function fromBase64Url(b64: string): string {
+  const padded = b64.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((b64.length + 3) % 4);
+  const bin = atob(padded);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+async function signStatelessOtpToken(
+  payload: { email: string; otpHash: string; otpSalt: string; exp: number },
+  secretSeed: string
+): Promise<string> {
+  const encoded = toBase64Url(JSON.stringify(payload));
+  const sig = await sha256Hex(`${secretSeed}::${encoded}`);
+  return `${encoded}.${sig}`;
+}
+
+async function verifyStatelessOtpToken(
+  token: string,
+  secretSeed: string
+): Promise<{ email: string; otpHash: string; otpSalt: string; exp: number } | null> {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 2) return null;
+    const [encoded, sig] = parts;
+    const expectedSig = await sha256Hex(`${secretSeed}::${encoded}`);
+    if (!constantTimeEqual(sig, expectedSig)) return null;
+    const parsed = JSON.parse(fromBase64Url(encoded));
+    if (!parsed?.otpHash || !parsed?.otpSalt || !parsed?.exp) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+async function dispatchAdminOtpEmail(opts: {
+  to: string;
+  otp: string;
+  expiresMinutes: number;
+  resendApiKey?: string;
+  fromEmail?: string;
+  webhookUrl?: string;
+  emailJs?: {
+    serviceId?: string;
+    templateId?: string;
+    publicKey?: string;
+    privateKey?: string;
+  };
+}): Promise<{ ok: boolean; error?: string }> {
+  const { to, otp, expiresMinutes, resendApiKey, fromEmail, webhookUrl, emailJs } = opts;
+  const subject = `[Santal Arsi] Admin Password OTP: ${otp}`;
+  const text = [
+    'Johar!',
+    '',
+    `Your Super Admin Password Verification OTP for Santal Arsi (Hor Katha Suite) is: ${otp}`,
+    '',
+    `This code is valid for ${expiresMinutes} minutes and applies strictly to ${to}.`,
+    'If you did not request this password change, please ignore this email.'
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:16px;background:#ffffff;">
+      <div style="font-size:12px;font-weight:700;color:#b45309;letter-spacing:0.08em;text-transform:uppercase;">BOSC Tech &amp; Edu · Santal Arsi</div>
+      <h2 style="margin:8px 0 12px;color:#0f172a;font-size:20px;">Super Admin Email OTP Verification</h2>
+      <p style="color:#475569;font-size:14px;line-height:1.5;margin:0 0 16px;">
+        Use the 6-digit verification code below to set or reset the Super Admin password for <strong>${to}</strong>:
+      </p>
+      <div style="text-align:center;margin:20px 0;padding:16px;background:#fffbeb;border:2px dashed #f59e0b;border-radius:12px;">
+        <span style="font-size:32px;font-weight:800;letter-spacing:0.25em;color:#92400e;font-family:monospace;">${otp}</span>
+      </div>
+      <p style="color:#64748b;font-size:12px;line-height:1.5;margin:0;">
+        Valid for <strong>${expiresMinutes} minutes</strong>. Never share this OTP with anyone.
+      </p>
+    </div>
+  `;
+
+  if (emailJs?.serviceId && emailJs?.templateId && emailJs?.publicKey) {
+    try {
+      const payload: Record<string, any> = {
+        service_id: emailJs.serviceId,
+        template_id: emailJs.templateId,
+        user_id: emailJs.publicKey,
+        template_params: {
+          to_email: to,
+          email: to,
+          otp,
+          passcode: otp,
+          time: `${expiresMinutes} minutes`,
+          expires_in: `${expiresMinutes} minutes`,
+          app_name: 'Santal Arsi',
+          subject,
+          message: `Your Santal Arsi Super Admin OTP is ${otp}. Valid for ${expiresMinutes} minutes.`
+        }
+      };
+      if (emailJs.privateKey) {
+        payload.accessToken = emailJs.privateKey;
+      }
+      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        if (res.status === 403 || /non-browser/i.test(errText)) {
+          return {
+            ok: false,
+            error:
+              'EmailJS Security त्रुटि (403): EmailJS → Account → Security में "Allow EmailJS API for non-browser applications" को ON (Tick) करें, या EMAILJS_PRIVATE_KEY जोड़ें।'
+          };
+        }
+        return {
+          ok: false,
+          error: `EmailJS त्रुटि (${res.status}): ${errText.slice(0, 160) || 'Service/Template/Public Key जांचें।'}`
+        };
+      }
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Failed to connect to EmailJS.' };
+    }
+  }
+
+  if (webhookUrl) {
+    try {
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, otp, subject, text, html, app: 'Santal Arsi', expiresMinutes })
+      });
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        return { ok: false, error: `OTP webhook error (${res.status}): ${errBody.slice(0, 140)}` };
+      }
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'OTP webhook connection failed.' };
+    }
+  }
+
+  if (resendApiKey) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: fromEmail || 'Santal Arsi Admin <onboarding@resend.dev>',
+          to: [to],
+          subject,
+          text,
+          html
+        })
+      });
+      if (!res.ok) {
+        const errData = (await res.json().catch(() => null)) as { message?: string } | null;
+        return {
+          ok: false,
+          error: errData?.message || `Email provider error (${res.status}). Check RESEND_API_KEY / sender.`
+        };
+      }
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Failed to reach Resend email service.' };
+    }
+  }
+
+  return { ok: false, error: 'Email OTP service is not configured.' };
 }
 
 function jsonResponse(payload: unknown, status = 200): Response {
@@ -148,7 +383,8 @@ async function loadStore(env: CloudflareEnv): Promise<PersistentStore> {
           villageEventNotices: Array.isArray(parsed.villageEventNotices)
             ? parsed.villageEventNotices
             : [],
-          operators: Array.isArray(parsed.operators) ? parsed.operators : []
+          operators: Array.isArray(parsed.operators) ? parsed.operators : [],
+          adminAuth: parsed.adminAuth || {}
         };
       }
     } catch {
@@ -745,6 +981,325 @@ export async function onRequest(context: PagesEventContext): Promise<Response> {
         createdAt: found.createdAt,
         updatedAt: found.updatedAt
       }
+    });
+  }
+
+  // Super Admin Email OTP Configuration Status
+  if (path === '/api/admin/otp-status' && method === 'GET') {
+    const resendKey = cleanEnvVar(env.RESEND_API_KEY);
+    const webhookUrl = cleanEnvVar(env.ADMIN_OTP_WEBHOOK_URL);
+    const emailJsConfigured = Boolean(
+      cleanEnvVar(env.EMAILJS_SERVICE_ID) &&
+        cleanEnvVar(env.EMAILJS_TEMPLATE_ID) &&
+        cleanEnvVar(env.EMAILJS_PUBLIC_KEY)
+    );
+    const store = await loadStore(env);
+    const provider = emailJsConfigured
+      ? 'emailjs'
+      : webhookUrl
+        ? 'webhook'
+        : resendKey
+          ? 'resend'
+          : 'none';
+    return jsonResponse({
+      success: true,
+      emailOtpConfigured: provider !== 'none',
+      provider,
+      targetEmail: SUPER_ADMIN_EMAIL,
+      hasCustomServerPassword: Boolean(store.adminAuth?.passwordHash)
+    });
+  }
+
+  // STRICTLY Super Admin (bosctechedu@gmail.com): Request 6-digit Email OTP
+  if (path === '/api/admin/request-otp' && method === 'POST') {
+    const body = await parseJsonBody(request);
+    const cleanEmail = String(body.email || SUPER_ADMIN_EMAIL).trim().toLowerCase();
+    if (cleanEmail !== SUPER_ADMIN_EMAIL) {
+      return jsonResponse(
+        { error: `Email OTP केवल मुख्य एडमिन (${SUPER_ADMIN_EMAIL}) के लिए ही भेजा जा सकता है।` },
+        403
+      );
+    }
+
+    const resendApiKey = cleanEnvVar(env.RESEND_API_KEY);
+    const webhookUrl = cleanEnvVar(env.ADMIN_OTP_WEBHOOK_URL);
+    const fromEmail = cleanEnvVar(env.ADMIN_OTP_FROM_EMAIL);
+    const emailJs = {
+      serviceId: cleanEnvVar(env.EMAILJS_SERVICE_ID),
+      templateId: cleanEnvVar(env.EMAILJS_TEMPLATE_ID),
+      publicKey: cleanEnvVar(env.EMAILJS_PUBLIC_KEY),
+      privateKey: cleanEnvVar(env.EMAILJS_PRIVATE_KEY)
+    };
+    const hasEmailJs = Boolean(emailJs.serviceId && emailJs.templateId && emailJs.publicKey);
+
+    if (!hasEmailJs && !resendApiKey && !webhookUrl) {
+      return jsonResponse(
+        {
+          error:
+            'Email OTP सेवा अभी कॉन्फ़िगर नहीं है। Cloudflare Variables में EMAILJS_SERVICE_ID / EMAILJS_TEMPLATE_ID / EMAILJS_PUBLIC_KEY या RESEND_API_KEY जोड़ें।',
+          setupRequired: true
+        },
+        503
+      );
+    }
+
+    const store = await loadStore(env);
+    const now = Date.now();
+    const lastSent = store.adminAuth?.lastOtpSentAt || 0;
+    const elapsedMs = now - lastSent;
+    if (elapsedMs < 45_000) {
+      const waitSec = Math.ceil((45_000 - elapsedMs) / 1000);
+      return jsonResponse(
+        {
+          error: `कृपया ${waitSec} सेकंड प्रतीक्षा करें और फिर नया OTP मंगाएं।`,
+          retryAfterSeconds: waitSec
+        },
+        429
+      );
+    }
+
+    const otp = generateSixDigitOtp();
+    const { salt, hash } = await hashSecretWithSalt(otp);
+    const exp = now + 10 * 60 * 1000;
+    store.adminAuth = {
+      ...(store.adminAuth || {}),
+      otpHash: hash,
+      otpSalt: salt,
+      otpExpiresAt: exp,
+      otpAttempts: 0,
+      lastOtpSentAt: now
+    };
+    await saveStore(env, store);
+
+    const mailResult = await dispatchAdminOtpEmail({
+      to: SUPER_ADMIN_EMAIL,
+      otp,
+      expiresMinutes: 10,
+      resendApiKey,
+      fromEmail,
+      webhookUrl,
+      emailJs: hasEmailJs ? emailJs : undefined
+    });
+
+    if (!mailResult.ok) {
+      store.adminAuth = {
+        ...(store.adminAuth || {}),
+        otpHash: undefined,
+        otpSalt: undefined,
+        otpExpiresAt: undefined,
+        otpAttempts: 0,
+        lastOtpSentAt: 0
+      };
+      await saveStore(env, store);
+      return jsonResponse({ error: mailResult.error || 'Email OTP भेजने में त्रुटि हुई।' }, 502);
+    }
+
+    const tokenSecret =
+      emailJs.privateKey ||
+      resendApiKey ||
+      emailJs.publicKey ||
+      webhookUrl ||
+      cleanEnvVar(env.GEMINI_API_KEY) ||
+      'bosc_santalarsi_otp_key';
+    const otpToken = await signStatelessOtpToken(
+      { email: SUPER_ADMIN_EMAIL, otpHash: hash, otpSalt: salt, exp },
+      tokenSecret
+    );
+
+    return jsonResponse({
+      success: true,
+      message: `6-अंकीय सत्यापन OTP (${SUPER_ADMIN_EMAIL}) के इनबॉक्स में भेज दिया गया है (10 मिनट मान्य)।`,
+      expiresInSeconds: 600,
+      otpToken
+    });
+  }
+
+  // STRICTLY Super Admin (bosctechedu@gmail.com): Verify 6-digit Email OTP & Set New Password
+  if (path === '/api/admin/verify-otp-password' && method === 'POST') {
+    const body = await parseJsonBody(request);
+    const cleanEmail = String(body.email || SUPER_ADMIN_EMAIL).trim().toLowerCase();
+    const otp = String(body.otp || '').trim();
+    const newPassword = String(body.newPassword || '').trim();
+    const otpToken = String(body.otpToken || '').trim();
+
+    if (cleanEmail !== SUPER_ADMIN_EMAIL) {
+      return jsonResponse({ error: `केवल ${SUPER_ADMIN_EMAIL} मान्य है।` }, 403);
+    }
+    if (!/^\d{6}$/.test(otp)) {
+      return jsonResponse({ error: 'कृपया 6 अंकों का सही OTP दर्ज करें।' }, 400);
+    }
+    if (newPassword.length < 6) {
+      return jsonResponse({ error: 'नया Admin पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।' }, 400);
+    }
+
+    const store = await loadStore(env);
+    const auth = store.adminAuth || {};
+
+    let activeHash = auth.otpHash;
+    let activeSalt = auth.otpSalt;
+    let activeExp = auth.otpExpiresAt;
+    let usingStateless = false;
+
+    if ((!activeHash || !activeSalt || !activeExp) && otpToken) {
+      const tokenSecret =
+        cleanEnvVar(env.EMAILJS_PRIVATE_KEY) ||
+        cleanEnvVar(env.RESEND_API_KEY) ||
+        cleanEnvVar(env.EMAILJS_PUBLIC_KEY) ||
+        cleanEnvVar(env.ADMIN_OTP_WEBHOOK_URL) ||
+        cleanEnvVar(env.GEMINI_API_KEY) ||
+        'bosc_santalarsi_otp_key';
+      const verifiedToken = await verifyStatelessOtpToken(otpToken, tokenSecret);
+      if (verifiedToken && verifiedToken.email === SUPER_ADMIN_EMAIL) {
+        activeHash = verifiedToken.otpHash;
+        activeSalt = verifiedToken.otpSalt;
+        activeExp = verifiedToken.exp;
+        usingStateless = true;
+      }
+    }
+
+    if (!activeHash || !activeSalt || !activeExp) {
+      return jsonResponse(
+        { error: 'कोई सक्रिय OTP नहीं मिला। कृपया पहले "Send Email OTP" पर क्लिक करें।' },
+        400
+      );
+    }
+    if (Date.now() > activeExp) {
+      return jsonResponse(
+        { error: 'OTP की समय-सीमा (10 मिनट) समाप्त हो गई है। कृपया नया OTP मंगाएं।' },
+        400
+      );
+    }
+    if (!usingStateless && (auth.otpAttempts || 0) >= 5) {
+      return jsonResponse(
+        { error: 'गलत OTP के 5 से अधिक प्रयास। सुरक्षा के लिए नया OTP मंगाएं।' },
+        429
+      );
+    }
+
+    const candidate = await hashSecretWithSalt(otp, activeSalt);
+    if (!constantTimeEqual(candidate.hash, activeHash)) {
+      if (!usingStateless) {
+        store.adminAuth = {
+          ...auth,
+          otpAttempts: (auth.otpAttempts || 0) + 1
+        };
+        await saveStore(env, store);
+        const remaining = Math.max(0, 5 - (store.adminAuth.otpAttempts || 0));
+        return jsonResponse({ error: `अमान्य OTP। शेष प्रयास: ${remaining}` }, 401);
+      }
+      return jsonResponse({ error: 'अमान्य 6-अंकीय OTP। कृपया सही कोड दर्ज करें।' }, 401);
+    }
+
+    const passDigest = await hashSecretWithSalt(newPassword);
+    store.adminAuth = {
+      passwordHash: passDigest.hash,
+      passwordSalt: passDigest.salt,
+      otpHash: undefined,
+      otpSalt: undefined,
+      otpExpiresAt: undefined,
+      otpAttempts: 0,
+      lastOtpSentAt: 0,
+      updatedAt: Date.now()
+    };
+    await saveStore(env, store);
+
+    return jsonResponse({
+      success: true,
+      message: 'Email OTP सत्यापित! नया Super Admin पासवर्ड सुरक्षित रूप से सेव हो गया है।'
+    });
+  }
+
+  // Google OAuth Verified Password Set/Reset Backup (strictly bosctechedu@gmail.com)
+  if (path === '/api/admin/google-verify-password' && method === 'POST') {
+    try {
+      const authHeader = request.headers.get('authorization');
+      const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+      const body = await parseJsonBody(request);
+      const newPassword = String(body.newPassword || '').trim();
+
+      if (!token) {
+        return jsonResponse({ error: 'Google OAuth टोकन आवश्यक है।' }, 401);
+      }
+      if (newPassword.length < 6) {
+        return jsonResponse({ error: 'नया Admin पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।' }, 400);
+      }
+
+      const googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!googleRes.ok) {
+        return jsonResponse({ error: 'Google सत्यापन विफल रहा। कृपया पुनः Google Sign-In करें।' }, 401);
+      }
+
+      const info = (await googleRes.json()) as { email?: string; email_verified?: boolean };
+      const verifiedEmail = (info.email || '').trim().toLowerCase();
+      if (verifiedEmail !== SUPER_ADMIN_EMAIL || info.email_verified === false) {
+        return jsonResponse(
+          {
+            error: `अनुमति अस्वीकृत: केवल ${SUPER_ADMIN_EMAIL} से Google Sign-In करने पर ही पासवर्ड बदला जा सकता है।`
+          },
+          403
+        );
+      }
+
+      const store = await loadStore(env);
+      const passDigest = await hashSecretWithSalt(newPassword);
+      store.adminAuth = {
+        passwordHash: passDigest.hash,
+        passwordSalt: passDigest.salt,
+        otpHash: undefined,
+        otpSalt: undefined,
+        otpExpiresAt: undefined,
+        otpAttempts: 0,
+        lastOtpSentAt: 0,
+        updatedAt: Date.now()
+      };
+      await saveStore(env, store);
+
+      return jsonResponse({
+        success: true,
+        message: `Google खाता (${SUPER_ADMIN_EMAIL}) सत्यापित! नया Admin पासवर्ड सेव हो गया।`
+      });
+    } catch {
+      return jsonResponse({ error: 'Google सत्यापन के दौरान सर्वर त्रुटि।' }, 500);
+    }
+  }
+
+  // Super Admin Server-Synced Login Verification
+  if (path === '/api/admin/super-login' && method === 'POST') {
+    const body = await parseJsonBody(request);
+    const cleanEmail = String(body.email || '').trim().toLowerCase();
+    const cleanPassword = String(body.password || '').trim();
+
+    if (cleanEmail !== SUPER_ADMIN_EMAIL || !cleanPassword) {
+      return jsonResponse({ error: `केवल ${SUPER_ADMIN_EMAIL} और सही पासवर्ड मान्य है।` }, 401);
+    }
+
+    const store = await loadStore(env);
+    const auth = store.adminAuth;
+    if (auth?.passwordHash && auth?.passwordSalt) {
+      const candidate = await hashSecretWithSalt(cleanPassword, auth.passwordSalt);
+      if (!constantTimeEqual(candidate.hash, auth.passwordHash)) {
+        return jsonResponse({ error: 'अमान्य Super Admin पासवर्ड।' }, 401);
+      }
+      return jsonResponse({
+        success: true,
+        role: 'super_admin',
+        email: SUPER_ADMIN_EMAIL,
+        hasServerPassword: true
+      });
+    }
+
+    const defaultPass = (env.DEFAULT_ADMIN_PASSWORD || 'admin123').trim();
+    if (!constantTimeEqual(cleanPassword, defaultPass)) {
+      return jsonResponse({ error: 'अमान्य Super Admin पासवर्ड।' }, 401);
+    }
+
+    return jsonResponse({
+      success: true,
+      role: 'super_admin',
+      email: SUPER_ADMIN_EMAIL,
+      hasServerPassword: false
     });
   }
 

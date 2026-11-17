@@ -14,6 +14,7 @@ import {
   LEXICON_CACHE_VERSION
 } from '../utils/indexedDB';
 import { safeLoadFromStorage, safeSaveToStorage } from '../utils/storage';
+import { signInWithGoogleAccount } from '../utils/googleAuth';
 
 export interface CustomContentBlock {
   id: string;
@@ -126,6 +127,29 @@ interface AdminContextType {
     passcode: string
   ) => Promise<{ success: boolean; role?: AdminRole; message?: string }>;
   logoutAdmin: () => void;
+  getAdminOtpStatus: () => Promise<{
+    emailOtpConfigured: boolean;
+    provider: 'emailjs' | 'resend' | 'webhook' | 'none';
+    targetEmail: string;
+    hasCustomServerPassword: boolean;
+  }>;
+  requestAdminEmailOtp: (email: string) => Promise<{
+    success: boolean;
+    message: string;
+    setupRequired?: boolean;
+    retryAfterSeconds?: number;
+    expiresInSeconds?: number;
+    otpToken?: string;
+  }>;
+  verifyAdminOtpAndSetPassword: (
+    email: string,
+    otp: string,
+    newPassword: string,
+    otpToken?: string
+  ) => Promise<{ success: boolean; message: string }>;
+  verifyAdminGoogleAndSetPassword: (
+    newPassword: string
+  ) => Promise<{ success: boolean; message: string }>;
   resetAdminPassword: (adminIdOrRecoveryKey: string, newPassword: string) => { success: boolean; message: string };
   updateAdminId: (newId: string) => void;
   createOperator: (input: {
@@ -590,18 +614,46 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return { success: false, message: 'कृपया ID / ईमेल और पासवर्ड दर्ज करें।' };
     }
 
-    if (loginAdmin(cleanId, cleanPass)) {
+    if (cleanId.toLowerCase() === SUPER_ADMIN_EMAIL) {
+      try {
+        const res = await fetch('/api/admin/super-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: SUPER_ADMIN_EMAIL, password: cleanPass })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.success) {
+          setAdminPassword(cleanPass);
+          localStorage.setItem('hor_katha_admin_password', cleanPass);
+          setAdminRole('super_admin');
+          setAdminId(SUPER_ADMIN_EMAIL);
+          setIsAdmin(true);
+          localStorage.setItem('hor_katha_admin_active', 'true');
+          localStorage.setItem('hor_katha_admin_role', 'super_admin');
+          localStorage.setItem('hor_katha_admin_id', SUPER_ADMIN_EMAIL);
+          return { success: true, role: 'super_admin' };
+        }
+        if (res.status === 401 || res.status === 403) {
+          return {
+            success: false,
+            message: data?.error || 'अमान्य Super Admin पासवर्ड। कृपया सही पासवर्ड दर्ज करें।'
+          };
+        }
+      } catch {
+        // Offline / local fallback below
+      }
+
+      if (loginAdmin(cleanId, cleanPass)) {
+        return { success: true, role: 'super_admin' };
+      }
       return {
-        success: true,
-        role: cleanId.toLowerCase() === SUPER_ADMIN_EMAIL ? 'super_admin' : 'operator'
+        success: false,
+        message: 'अमान्य Super Admin पासवर्ड। कृपया सही पासवर्ड दर्ज करें या Email OTP से रीसेट करें।'
       };
     }
 
-    if (cleanId.toLowerCase() === SUPER_ADMIN_EMAIL) {
-      return {
-        success: false,
-        message: 'अमान्य Super Admin पासवर्ड। कृपया सही पासवर्ड दर्ज करें।'
-      };
+    if (loginAdmin(cleanId, cleanPass)) {
+      return { success: true, role: 'operator' };
     }
 
     try {
@@ -640,40 +692,233 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const getAdminOtpStatus: AdminContextType['getAdminOtpStatus'] = async () => {
+    try {
+      const res = await fetch('/api/admin/otp-status', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        return {
+          emailOtpConfigured: Boolean(data?.emailOtpConfigured),
+          provider:
+            data?.provider === 'emailjs' ||
+            data?.provider === 'resend' ||
+            data?.provider === 'webhook'
+              ? data.provider
+              : 'none',
+          targetEmail: data?.targetEmail || SUPER_ADMIN_EMAIL,
+          hasCustomServerPassword: Boolean(data?.hasCustomServerPassword)
+        };
+      }
+    } catch {
+      // ignore offline
+    }
+    return {
+      emailOtpConfigured: false,
+      provider: 'none',
+      targetEmail: SUPER_ADMIN_EMAIL,
+      hasCustomServerPassword: false
+    };
+  };
+
+  const requestAdminEmailOtp: AdminContextType['requestAdminEmailOtp'] = async (email) => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail !== SUPER_ADMIN_EMAIL) {
+      return {
+        success: false,
+        message: `Email OTP केवल मुख्य एडमिन ईमेल (${SUPER_ADMIN_EMAIL}) पर ही भेजा जा सकता है।`
+      };
+    }
+    try {
+      const res = await fetch('/api/admin/request-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: SUPER_ADMIN_EMAIL })
+      });
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        return {
+          success: false,
+          message: `API रूट उपलब्ध नहीं है (HTTP ${res.status}): कृपया पहले अपडेट किया गया Source ZIP डाउनलोड करके push.bat से GitHub/Cloudflare पर Push करें।`
+        };
+      }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.success) {
+        return {
+          success: true,
+          message:
+            data.message ||
+            `6-अंकीय OTP (${SUPER_ADMIN_EMAIL}) के इनबॉक्स में भेजा गया है।`,
+          expiresInSeconds: data.expiresInSeconds || 600,
+          otpToken: typeof data.otpToken === 'string' ? data.otpToken : undefined
+        };
+      }
+      return {
+        success: false,
+        message:
+          data?.error ||
+          `Email OTP भेजने में त्रुटि (HTTP ${res.status})। कृपया EmailJS Security व Cloudflare Variables जाँचें।`,
+        setupRequired: Boolean(data?.setupRequired),
+        retryAfterSeconds: data?.retryAfterSeconds
+      };
+    } catch {
+      return {
+        success: false,
+        message: 'सर्वर से कनेक्शन नहीं हो सका। कृपया इंटरनेट या सर्वर स्थिति जाँचें।'
+      };
+    }
+  };
+
+  const verifyAdminOtpAndSetPassword: AdminContextType['verifyAdminOtpAndSetPassword'] = async (
+    email,
+    otp,
+    newPassword,
+    otpToken
+  ) => {
+    if (isAdmin && !isSuperAdmin) {
+      return {
+        success: false,
+        message: `केवल मुख्य एडमिन (${SUPER_ADMIN_EMAIL}) ही Admin पासवर्ड बदल सकते हैं।`
+      };
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanOtp = otp.trim();
+    const cleanPass = newPassword.trim();
+    if (cleanEmail !== SUPER_ADMIN_EMAIL) {
+      return {
+        success: false,
+        message: `केवल ${SUPER_ADMIN_EMAIL} मान्य है।`
+      };
+    }
+    if (!/^\d{6}$/.test(cleanOtp)) {
+      return { success: false, message: 'कृपया ईमेल में प्राप्त 6 अंकों का OTP दर्ज करें।' };
+    }
+    if (cleanPass.length < 6) {
+      return { success: false, message: 'नया पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।' };
+    }
+
+    try {
+      const res = await fetch('/api/admin/verify-otp-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: SUPER_ADMIN_EMAIL,
+          otp: cleanOtp,
+          newPassword: cleanPass,
+          otpToken: otpToken || ''
+        })
+      });
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        return {
+          success: false,
+          message: `API रूट उपलब्ध नहीं है (HTTP ${res.status}): कृपया नया Source ZIP GitHub/Cloudflare पर Push करें।`
+        };
+      }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.success) {
+        setAdminPassword(cleanPass);
+        localStorage.setItem('hor_katha_admin_password', cleanPass);
+        return {
+          success: true,
+          message:
+            data.message || 'Email OTP सत्यापित! नया Super Admin पासवर्ड सेव हो गया।'
+        };
+      }
+      return {
+        success: false,
+        message: data?.error || `OTP सत्यापन असफल (HTTP ${res.status})। कृपया सही 6-अंकीय OTP दर्ज करें।`
+      };
+    } catch {
+      return {
+        success: false,
+        message: 'सर्वर से सत्यापन नहीं हो सका। कृपया पुनः प्रयास करें।'
+      };
+    }
+  };
+
+  const verifyAdminGoogleAndSetPassword: AdminContextType['verifyAdminGoogleAndSetPassword'] = async (
+    newPassword
+  ) => {
+    if (isAdmin && !isSuperAdmin) {
+      return {
+        success: false,
+        message: `केवल मुख्य एडमिन (${SUPER_ADMIN_EMAIL}) ही Admin पासवर्ड बदल सकते हैं।`
+      };
+    }
+    const cleanPass = newPassword.trim();
+    if (cleanPass.length < 6) {
+      return { success: false, message: 'नया पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।' };
+    }
+
+    try {
+      const { user, accessToken } = await signInWithGoogleAccount();
+      const verifiedEmail = (user.email || '').trim().toLowerCase();
+      if (verifiedEmail !== SUPER_ADMIN_EMAIL) {
+        return {
+          success: false,
+          message: `गलत Google खाता (${verifiedEmail || 'unknown'})! कृपया केवल ${SUPER_ADMIN_EMAIL} से साइन-इन करें।`
+        };
+      }
+
+      const res = await fetch('/api/admin/google-verify-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ newPassword: cleanPass })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.success) {
+        setAdminPassword(cleanPass);
+        localStorage.setItem('hor_katha_admin_password', cleanPass);
+        return {
+          success: true,
+          message:
+            data.message || `Google खाता (${SUPER_ADMIN_EMAIL}) सत्यापित! नया Admin पासवर्ड सेव हो गया।`
+        };
+      }
+      return {
+        success: false,
+        message: data?.error || 'Google सत्यापन सर्वर द्वारा अस्वीकृत।'
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err?.message || 'Google Sign-In रद्द किया गया या विफल रहा।'
+      };
+    }
+  };
+
   const resetAdminPassword = (
     adminIdOrRecoveryKey: string,
     newPassword: string
   ): { success: boolean; message: string } => {
-    if (isAdmin && !isSuperAdmin) {
+    if (!isSuperAdmin) {
       return {
         success: false,
-        message: 'केवल मुख्य एडमिन (bosctechedu@gmail.com) ही Admin पासवर्ड बदल सकते हैं।'
+        message: 'सुरक्षा नियम: Super Admin पासवर्ड बदलने के लिए Email OTP (bosctechedu@gmail.com) या Google सत्यापन आवश्यक है।'
       };
     }
-
     const key = adminIdOrRecoveryKey.trim().toLowerCase();
-    const validVerificationKeys = [SUPER_ADMIN_EMAIL, 'bosc-recovery-key'];
-
-    if (!validVerificationKeys.includes(key)) {
+    if (key !== SUPER_ADMIN_EMAIL) {
       return {
         success: false,
-        message: 'केवल पंजीकृत मुख्य एडमिन ईमेल (bosctechedu@gmail.com) या मास्टर रिकवरी कुंजी मान्य है।'
+        message: `केवल मुख्य एडमिन ईमेल (${SUPER_ADMIN_EMAIL}) मान्य है।`
       };
     }
-
-    if (!newPassword || newPassword.trim().length < 4) {
+    if (!newPassword || newPassword.trim().length < 6) {
       return {
         success: false,
-        message: 'नया पासवर्ड कम से कम 4 अक्षरों का होना चाहिए।'
+        message: 'नया पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।'
       };
     }
-
     const trimmed = newPassword.trim();
     setAdminPassword(trimmed);
     localStorage.setItem('hor_katha_admin_password', trimmed);
     return {
       success: true,
-      message: 'Super Admin पासवर्ड सफलतापूर्वक अपडेट हो गया!'
+      message: 'Super Admin पासवर्ड अपडेट हो गया!'
     };
   };
 
@@ -1398,6 +1643,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       loginAdmin,
       loginAdminWithServerSync,
       logoutAdmin,
+      getAdminOtpStatus,
+      requestAdminEmailOtp,
+      verifyAdminOtpAndSetPassword,
+      verifyAdminGoogleAndSetPassword,
       resetAdminPassword,
       updateAdminId,
       createOperator,

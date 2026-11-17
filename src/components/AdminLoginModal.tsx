@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAdmin, SUPER_ADMIN_EMAIL } from '../context/AdminContext';
 import {
   Lock,
@@ -15,7 +15,10 @@ import {
   Fingerprint,
   Edit3,
   Users,
-  Download
+  Download,
+  Mail,
+  Send,
+  ShieldCheck
 } from 'lucide-react';
 
 interface AdminLoginModalProps {
@@ -39,7 +42,10 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     adminId,
     loginAdminWithServerSync,
     logoutAdmin,
-    resetAdminPassword
+    getAdminOtpStatus,
+    requestAdminEmailOtp,
+    verifyAdminOtpAndSetPassword,
+    verifyAdminGoogleAndSetPassword
   } = useAdmin();
 
   // Active view tab: 'login' | 'reset'
@@ -53,20 +59,66 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginSuccess, setLoginSuccess] = useState<string | null>(null);
 
-  // Reset form state
-  const [resetIdOrKey, setResetIdOrKey] = useState('');
+  // Email OTP server status & cooldown state
+  const [otpConfigStatus, setOtpConfigStatus] = useState<{
+    emailOtpConfigured: boolean;
+    provider: 'emailjs' | 'resend' | 'webhook' | 'none';
+  } | null>(null);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+
+  // Logged-out Reset by Email OTP form state
+  const [resetEmail, setResetEmail] = useState(SUPER_ADMIN_EMAIL);
+  const [resetOtp, setResetOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPass, setShowNewPass] = useState(false);
+  const [sendingResetOtp, setSendingResetOtp] = useState(false);
+  const [verifyingResetOtp, setVerifyingResetOtp] = useState(false);
+  const [verifyingGoogleReset, setVerifyingGoogleReset] = useState(false);
+  const [resetOtpNotice, setResetOtpNotice] = useState<string | null>(null);
+  const [resetOtpToken, setResetOtpToken] = useState('');
+  const [resetSetupRequired, setResetSetupRequired] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
 
-  // Active session change password inline toggle
+  // Logged-in Super Admin change password by Email OTP inline state
   const [showChangePassInline, setShowChangePassInline] = useState(false);
+  const [inlineOtp, setInlineOtp] = useState('');
+  const [inlineOtpToken, setInlineOtpToken] = useState('');
   const [inlineNewPass, setInlineNewPass] = useState('');
+  const [inlineConfirmPass, setInlineConfirmPass] = useState('');
+  const [showInlinePass, setShowInlinePass] = useState(false);
+  const [sendingInlineOtp, setSendingInlineOtp] = useState(false);
+  const [verifyingInlineOtp, setVerifyingInlineOtp] = useState(false);
+  const [verifyingGoogleInline, setVerifyingGoogleInline] = useState(false);
+  const [inlineSetupRequired, setInlineSetupRequired] = useState(false);
   const [inlineMsg, setInlineMsg] = useState<{ success: boolean; text: string } | null>(null);
   const [downloadingSourceZip, setDownloadingSourceZip] = useState(false);
   const [zipDownloadMsg, setZipDownloadMsg] = useState<{ success: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let mounted = true;
+    getAdminOtpStatus().then((status) => {
+      if (mounted) {
+        setOtpConfigStatus({
+          emailOtpConfigured: status.emailOtpConfigured,
+          provider: status.provider
+        });
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [isOpen, getAdminOtpStatus]);
+
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setOtpCooldown((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [otpCooldown]);
 
   if (!isOpen) return null;
 
@@ -145,30 +197,62 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     }
   };
 
-  // Handle Password Reset
-  const handleResetSubmit = (e: React.FormEvent) => {
+  // Request Email OTP for Logged-out Reset tab
+  const handleSendResetOtp = async () => {
+    if (sendingResetOtp || otpCooldown > 0) return;
+    setResetError(null);
+    setResetOtpNotice(null);
+    setResetSetupRequired(false);
+    setSendingResetOtp(true);
+    const res = await requestAdminEmailOtp(resetEmail);
+    setSendingResetOtp(false);
+
+    if (res.success) {
+      setResetOtpNotice(res.message);
+      if (res.otpToken) setResetOtpToken(res.otpToken);
+      setOtpCooldown(45);
+    } else {
+      setResetError(res.message);
+      if (res.setupRequired) setResetSetupRequired(true);
+      if (res.retryAfterSeconds) setOtpCooldown(res.retryAfterSeconds);
+    }
+  };
+
+  // Verify Email OTP & Reset Password (Logged-out Reset tab)
+  const handleResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setResetError(null);
     setResetSuccessMessage(null);
 
-    if (!resetIdOrKey.trim()) {
-      setResetError('Please enter your Admin ID, Email, or Master Recovery Key.');
+    if (resetEmail.trim().toLowerCase() !== SUPER_ADMIN_EMAIL) {
+      setResetError(`केवल मुख्य एडमिन ईमेल (${SUPER_ADMIN_EMAIL}) मान्य है।`);
       return;
     }
-    if (!newPassword || newPassword.length < 4) {
-      setResetError('New password must be at least 4 characters long.');
+    if (!/^\d{6}$/.test(resetOtp.trim())) {
+      setResetError('कृपया ईमेल में प्राप्त 6 अंकों का OTP दर्ज करें।');
       return;
     }
-    if (newPassword !== confirmPassword) {
-      setResetError('New passwords do not match. Please re-enter carefully.');
+    if (!newPassword || newPassword.trim().length < 6) {
+      setResetError('नया पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।');
+      return;
+    }
+    if (newPassword.trim() !== confirmPassword.trim()) {
+      setResetError('दोनों नए पासवर्ड मेल नहीं खा रहे हैं। कृपया दोबारा जांचें।');
       return;
     }
 
-    const res = resetAdminPassword(resetIdOrKey.trim(), newPassword.trim());
+    setVerifyingResetOtp(true);
+    const res = await verifyAdminOtpAndSetPassword(resetEmail, resetOtp, newPassword, resetOtpToken);
+    setVerifyingResetOtp(false);
+
     if (res.success) {
       setResetSuccessMessage(res.message);
-      setPasscode(newPassword);
+      setPasscode(newPassword.trim());
       setLoginId(SUPER_ADMIN_EMAIL);
+      setResetOtp('');
+      setResetOtpToken('');
+      setNewPassword('');
+      setConfirmPassword('');
       setTimeout(() => {
         setActiveTab('login');
       }, 1500);
@@ -177,19 +261,112 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     }
   };
 
-  // Handle inline password update while logged in
-  const handleInlineChangePass = (e: React.FormEvent) => {
-    e.preventDefault();
-    setInlineMsg(null);
-    if (!inlineNewPass || inlineNewPass.length < 4) {
-      setInlineMsg({ success: false, text: 'Password must be at least 4 characters.' });
+  // Google Sign-In verified backup for Logged-out Reset tab
+  const handleGoogleVerifiedReset = async () => {
+    setResetError(null);
+    setResetSuccessMessage(null);
+    if (!newPassword || newPassword.trim().length < 6) {
+      setResetError('Google सत्यापन से पहले नीचे कम से कम 6 अक्षरों का नया पासवर्ड भरें।');
       return;
     }
-    const res = resetAdminPassword(adminId, inlineNewPass.trim());
+    if (newPassword.trim() !== confirmPassword.trim()) {
+      setResetError('दोनों नए पासवर्ड मेल नहीं खा रहे हैं।');
+      return;
+    }
+    setVerifyingGoogleReset(true);
+    const res = await verifyAdminGoogleAndSetPassword(newPassword);
+    setVerifyingGoogleReset(false);
     if (res.success) {
-      setInlineMsg({ success: true, text: 'Password updated successfully!' });
+      setResetSuccessMessage(res.message);
+      setPasscode(newPassword.trim());
+      setLoginId(SUPER_ADMIN_EMAIL);
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => {
+        setActiveTab('login');
+      }, 1500);
+    } else {
+      setResetError(res.message);
+    }
+  };
+
+  // Request Email OTP for Logged-in Super Admin inline password change
+  const handleSendInlineOtp = async () => {
+    if (sendingInlineOtp || otpCooldown > 0) return;
+    setInlineMsg(null);
+    setInlineSetupRequired(false);
+    setSendingInlineOtp(true);
+    const res = await requestAdminEmailOtp(SUPER_ADMIN_EMAIL);
+    setSendingInlineOtp(false);
+
+    if (res.success) {
+      setInlineMsg({ success: true, text: res.message });
+      if (res.otpToken) setInlineOtpToken(res.otpToken);
+      setOtpCooldown(45);
+    } else {
+      setInlineMsg({ success: false, text: res.message });
+      if (res.setupRequired) setInlineSetupRequired(true);
+      if (res.retryAfterSeconds) setOtpCooldown(res.retryAfterSeconds);
+    }
+  };
+
+  // Verify Email OTP & Update Password (Logged-in Super Admin)
+  const handleInlineChangePass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInlineMsg(null);
+    if (!/^\d{6}$/.test(inlineOtp.trim())) {
+      setInlineMsg({ success: false, text: 'कृपया ईमेल में प्राप्त 6 अंकों का OTP दर्ज करें।' });
+      return;
+    }
+    if (!inlineNewPass || inlineNewPass.trim().length < 6) {
+      setInlineMsg({ success: false, text: 'नया पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।' });
+      return;
+    }
+    if (inlineNewPass.trim() !== inlineConfirmPass.trim()) {
+      setInlineMsg({ success: false, text: 'दोनों नए पासवर्ड मेल नहीं खा रहे हैं।' });
+      return;
+    }
+    setVerifyingInlineOtp(true);
+    const res = await verifyAdminOtpAndSetPassword(
+      SUPER_ADMIN_EMAIL,
+      inlineOtp,
+      inlineNewPass,
+      inlineOtpToken
+    );
+    setVerifyingInlineOtp(false);
+
+    if (res.success) {
+      setInlineMsg({ success: true, text: res.message });
+      setInlineOtp('');
+      setInlineOtpToken('');
       setInlineNewPass('');
-      setTimeout(() => setShowChangePassInline(false), 1500);
+      setInlineConfirmPass('');
+      setTimeout(() => setShowChangePassInline(false), 1600);
+    } else {
+      setInlineMsg({ success: false, text: res.message });
+    }
+  };
+
+  // Google Sign-In verified backup for Logged-in Super Admin
+  const handleInlineGoogleVerifyPass = async () => {
+    setInlineMsg(null);
+    if (!inlineNewPass || inlineNewPass.trim().length < 6) {
+      setInlineMsg({ success: false, text: 'Google सत्यापन से पहले नीचे कम से कम 6 अक्षरों का नया पासवर्ड भरें।' });
+      return;
+    }
+    if (inlineNewPass.trim() !== inlineConfirmPass.trim()) {
+      setInlineMsg({ success: false, text: 'दोनों नए पासवर्ड मेल नहीं खा रहे हैं।' });
+      return;
+    }
+    setVerifyingGoogleInline(true);
+    const res = await verifyAdminGoogleAndSetPassword(inlineNewPass);
+    setVerifyingGoogleInline(false);
+
+    if (res.success) {
+      setInlineMsg({ success: true, text: res.message });
+      setInlineNewPass('');
+      setInlineConfirmPass('');
+      setTimeout(() => setShowChangePassInline(false), 1600);
     } else {
       setInlineMsg({ success: false, text: res.message });
     }
@@ -371,53 +548,165 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 </div>
               )}
 
-              {/* Super Admin Only: Inline Password Security Settings */}
+              {/* Super Admin Only: Inline Email OTP Password Security Settings */}
               {isSuperAdmin ? (
                 <div className="bg-slate-50 rounded-2xl border border-slate-200/80 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <KeyRound className="w-4 h-4 text-amber-600" />
-                      <span>Super Admin Password Settings</span>
-                    </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <KeyRound className="w-4 h-4 text-amber-600" />
+                        <span>Admin Password (Email OTP)</span>
+                      </span>
+                      {otpConfigStatus && (
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            otpConfigStatus.emailOtpConfigured
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {otpConfigStatus.emailOtpConfigured
+                            ? `Email OTP Active (${otpConfigStatus.provider.toUpperCase()})`
+                            : 'EmailJS / Resend Pending'}
+                        </span>
+                      )}
+                    </div>
                     <button
-                      onClick={() => setShowChangePassInline(!showChangePassInline)}
-                      className="text-xs text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer"
+                      type="button"
+                      onClick={() => {
+                        setShowChangePassInline(!showChangePassInline);
+                        setInlineMsg(null);
+                      }}
+                      className="text-xs text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer shrink-0"
                     >
-                      {showChangePassInline ? 'Hide Form' : 'Change Password'}
+                      {showChangePassInline ? 'Hide' : 'Set by Email OTP'}
                     </button>
                   </div>
 
                   {showChangePassInline && (
-                    <form onSubmit={handleInlineChangePass} className="space-y-2.5 pt-1">
-                      <div>
-                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                          Set New Super Admin Password
-                        </label>
-                        <input
-                          type="password"
-                          value={inlineNewPass}
-                          onChange={(e) => setInlineNewPass(e.target.value)}
-                          placeholder="Enter new secure password (min 4 chars)..."
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
-                        />
+                    <form onSubmit={handleInlineChangePass} className="space-y-3 pt-1">
+                      {/* Step 1: Send OTP to bosctechedu@gmail.com */}
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 space-y-2">
+                        <div className="flex items-center justify-between gap-2 text-[11px]">
+                          <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                            <Mail className="w-3.5 h-3.5 text-amber-600" />
+                            <span>{SUPER_ADMIN_EMAIL}</span>
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-semibold">Step 1: Email OTP</span>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={sendingInlineOtp || otpCooldown > 0}
+                          onClick={handleSendInlineOtp}
+                          className="w-full py-2 px-3 rounded-xl bg-amber-100 hover:bg-amber-200 disabled:opacity-60 text-amber-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>
+                            {sendingInlineOtp
+                              ? 'OTP भेजा जा रहा है...'
+                              : otpCooldown > 0
+                                ? `पुनः OTP भेजें (${otpCooldown}s)`
+                                : 'bosctechedu@gmail.com पर 6-अंकीय OTP भेजें'}
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* Step 2: Enter OTP & New Password */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="sm:col-span-2">
+                          <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                            6-Digit Email OTP
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            value={inlineOtp}
+                            onChange={(e) => setInlineOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            placeholder="ईमेल में आया 6 अंकों का कोड दर्ज करें"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-mono tracking-widest focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                            New Password (min 6 chars)
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showInlinePass ? 'text' : 'password'}
+                              value={inlineNewPass}
+                              onChange={(e) => setInlineNewPass(e.target.value)}
+                              placeholder="नया पासवर्ड (6+ अक्षर)"
+                              className="w-full px-3 py-2 pr-8 rounded-xl border border-slate-300 bg-white text-xs font-medium focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowInlinePass(!showInlinePass)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                            >
+                              {showInlinePass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                            Confirm New Password
+                          </label>
+                          <input
+                            type={showInlinePass ? 'text' : 'password'}
+                            value={inlineConfirmPass}
+                            onChange={(e) => setInlineConfirmPass(e.target.value)}
+                            placeholder="पासवर्ड पुनः दर्ज करें"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
+                          />
+                        </div>
                       </div>
 
                       {inlineMsg && (
                         <p
-                          className={`text-xs font-semibold ${
-                            inlineMsg.success ? 'text-emerald-600' : 'text-rose-600'
+                          className={`text-xs font-semibold p-2 rounded-xl border ${
+                            inlineMsg.success
+                              ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                              : 'text-rose-700 bg-rose-50 border-rose-200'
                           }`}
                         >
                           {inlineMsg.text}
                         </p>
                       )}
 
+                      {(inlineSetupRequired || (otpConfigStatus && !otpConfigStatus.emailOtpConfigured)) && (
+                        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-950 space-y-2">
+                          <p>
+                            Gmail पर असली Email OTP पाने के लिए Cloudflare Pages → Settings → Variables and Secrets में{' '}
+                            <code className="font-mono font-bold">EMAILJS_SERVICE_ID</code>,{' '}
+                            <code className="font-mono font-bold">EMAILJS_TEMPLATE_ID</code>,{' '}
+                            <code className="font-mono font-bold">EMAILJS_PUBLIC_KEY</code> (या <code className="font-mono font-bold">RESEND_API_KEY</code>) जोड़ें।
+                          </p>
+                          <button
+                            type="button"
+                            disabled={verifyingGoogleInline}
+                            onClick={handleInlineGoogleVerifyPass}
+                            className="w-full py-1.5 px-3 rounded-lg bg-white hover:bg-slate-50 border border-amber-300 text-slate-800 font-bold text-[11px] flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>
+                              {verifyingGoogleInline
+                                ? 'Google सत्यापन जारी...'
+                                : 'या Google (bosctechedu@gmail.com) से तुरंत पासवर्ड सेट करें'}
+                            </span>
+                          </button>
+                        </div>
+                      )}
+
                       <div className="flex justify-end pt-1">
                         <button
                           type="submit"
-                          className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                          disabled={verifyingInlineOtp}
+                          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                         >
-                          Save New Password
+                          {verifyingInlineOtp ? 'Verifying OTP...' : 'Verify OTP & Save Password'}
                         </button>
                       </div>
                     </form>
@@ -474,6 +763,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                     setActiveTab('reset');
                     setResetError(null);
                     setResetSuccessMessage(null);
+                    setResetOtpNotice(null);
                   }}
                   className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     activeTab === 'reset'
@@ -481,8 +771,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <RotateCcw className="w-3.5 h-3.5 text-orange-600" />
-                  <span>Reset ID &amp; Password</span>
+                  <Mail className="w-3.5 h-3.5 text-orange-600" />
+                  <span>Password by Email OTP</span>
                 </button>
               </div>
 
@@ -544,7 +834,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                         onClick={() => setActiveTab('reset')}
                         className="text-[11px] text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer"
                       >
-                        Reset Admin Password?
+                        Set/Reset Password via Email OTP?
                       </button>
                     </div>
                     <div className="relative">
@@ -607,41 +897,94 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 </form>
               )}
 
-              {/* TAB 2: RESET PASSWORD (SUPER ADMIN ONLY) */}
+              {/* TAB 2: SET / RESET SUPER ADMIN PASSWORD BY EMAIL OTP */}
               {activeTab === 'reset' && (
                 <form onSubmit={handleResetSubmit} className="space-y-3.5">
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/90 text-xs text-slate-600">
-                    <p className="font-bold text-slate-800 flex items-center gap-1.5 mb-0.5">
-                      <Fingerprint className="w-3.5 h-3.5 text-orange-600" />
-                      <span>Super Admin Credentials Recovery &amp; Reset</span>
-                    </p>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/90 text-xs text-slate-600 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                        <Fingerprint className="w-3.5 h-3.5 text-orange-600" />
+                        <span>Super Admin Email OTP Password Setup</span>
+                      </p>
+                      {otpConfigStatus && (
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            otpConfigStatus.emailOtpConfigured
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {otpConfigStatus.emailOtpConfigured ? 'OTP Ready' : 'Key Setup Needed'}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-slate-500">
-                      केवल पंजीकृत मुख्य एडमिन ईमेल (<code>{SUPER_ADMIN_EMAIL}</code>) या मास्टर रिकवरी कुंजी (<code>BOSC-RECOVERY-KEY</code>) दर्ज करके नया पासवर्ड सेट करें।
+                      नया Admin पासवर्ड सेट या रीसेट करने के लिए <code>{SUPER_ADMIN_EMAIL}</code> पर 6-अंकीय Email OTP मंगाकर सत्यापित करें।
                     </p>
                   </div>
 
-                  {/* Verification Key / Admin Email */}
+                  {/* Step 1: Registered Super Admin Email + Send OTP Button */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Step 1: Registered Super Admin Email
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="email"
+                        value={resetEmail}
+                        onChange={(e) => {
+                          setResetEmail(e.target.value);
+                          setResetError(null);
+                        }}
+                        placeholder={SUPER_ADMIN_EMAIL}
+                        className="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-amber-500/20 focus:outline-none bg-slate-50"
+                      />
+                      <button
+                        type="button"
+                        disabled={sendingResetOtp || otpCooldown > 0}
+                        onClick={handleSendResetOtp}
+                        className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 cursor-pointer transition-colors"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>
+                          {sendingResetOtp
+                            ? 'Sending...'
+                            : otpCooldown > 0
+                              ? `Resend (${otpCooldown}s)`
+                              : 'Send Email OTP'}
+                        </span>
+                      </button>
+                    </div>
+                    {resetOtpNotice && (
+                      <p className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                        {resetOtpNotice}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Step 2: 6-Digit Email OTP */}
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Registered Admin Email / Recovery Key
+                      Step 2: Enter 6-Digit Email OTP
                     </label>
                     <input
                       type="text"
-                      value={resetIdOrKey}
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={resetOtp}
                       onChange={(e) => {
-                        setResetIdOrKey(e.target.value);
+                        setResetOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
                         setResetError(null);
                       }}
-                      placeholder={`e.g. ${SUPER_ADMIN_EMAIL}`}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-amber-500/20 focus:outline-none bg-slate-50"
-                      autoFocus
+                      placeholder="Gmail इनबॉक्स में आया 6-अंकीय OTP (जैसे 482910)"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-mono tracking-widest focus:ring-2 focus:ring-amber-500/20 focus:outline-none bg-slate-50"
                     />
                   </div>
 
                   {/* New Password */}
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1">
-                      New Admin Password
+                      New Admin Password (min 6 chars)
                     </label>
                     <div className="relative">
                       <input
@@ -651,7 +994,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                           setNewPassword(e.target.value);
                           setResetError(null);
                         }}
-                        placeholder="Enter new password (min 4 characters)..."
+                        placeholder="नया सुरक्षित पासवर्ड दर्ज करें (कम से कम 6 अक्षर)..."
                         className="w-full px-3.5 py-2 pr-10 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-amber-500/20 focus:outline-none bg-slate-50"
                       />
                       <button
@@ -676,10 +1019,35 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                         setConfirmPassword(e.target.value);
                         setResetError(null);
                       }}
-                      placeholder="Re-enter new password..."
+                      placeholder="नया पासवर्ड दोबारा दर्ज करें..."
                       className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-amber-500/20 focus:outline-none bg-slate-50"
                     />
                   </div>
+
+                  {/* Optional Setup Notice + Google Verify Backup when Email Key not configured yet */}
+                  {(resetSetupRequired || (otpConfigStatus && !otpConfigStatus.emailOtpConfigured)) && (
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-950 space-y-2">
+                      <p className="font-semibold">
+                        Gmail में Email OTP पाने के लिए Cloudflare Pages → Settings → Variables and Secrets में{' '}
+                        <code className="font-mono font-bold">EMAILJS_SERVICE_ID</code>,{' '}
+                        <code className="font-mono font-bold">EMAILJS_TEMPLATE_ID</code>,{' '}
+                        <code className="font-mono font-bold">EMAILJS_PUBLIC_KEY</code> (या <code className="font-mono font-bold">RESEND_API_KEY</code>) जोड़ें।
+                      </p>
+                      <button
+                        type="button"
+                        disabled={verifyingGoogleReset}
+                        onClick={handleGoogleVerifiedReset}
+                        className="w-full py-2 px-3 rounded-xl bg-white hover:bg-slate-50 border border-amber-300 text-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        <span>
+                          {verifyingGoogleReset
+                            ? 'Google सत्यापन हो रहा है...'
+                            : 'तुरंत विकल्प: Google (bosctechedu@gmail.com) से पासवर्ड सेट करें'}
+                        </span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Reset Error */}
                   {resetError && (
@@ -694,10 +1062,10 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                     <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold space-y-1">
                       <div className="flex items-center gap-1.5 text-emerald-700">
                         <CheckCircle2 className="w-4 h-4" />
-                        <span className="font-bold">Password Reset Successful!</span>
+                        <span className="font-bold">Admin Password Verified &amp; Saved!</span>
                       </div>
                       <p className="text-[11px] text-emerald-900 font-normal">
-                        Your credentials have been updated and saved. Switching to login...
+                        {resetSuccessMessage}
                       </p>
                     </div>
                   )}
@@ -714,10 +1082,11 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
                     <button
                       type="submit"
-                      className="px-5 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer hover:scale-102"
+                      disabled={verifyingResetOtp}
+                      className="px-5 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer hover:scale-102"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Reset &amp; Save Password</span>
+                      <span>{verifyingResetOtp ? 'Verifying OTP...' : 'Verify OTP & Save Password'}</span>
                     </button>
                   </div>
                 </form>
