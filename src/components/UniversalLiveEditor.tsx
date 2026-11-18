@@ -538,8 +538,15 @@ export const UniversalLiveEditor: React.FC<UniversalLiveEditorProps> = ({
 
       const btnOrLink = target.closest('button, a') as HTMLElement | null;
       if (btnOrLink && !forceInteractiveEdit) {
-        // Always let speaker/audio buttons function normally on left click
-        if (btnOrLink.querySelector('svg.lucide-volume-2')) return false;
+        // Always let speaker/audio/reader buttons function normally on left click
+        if (
+          btnOrLink.getAttribute('data-reader-action') === 'true' ||
+          btnOrLink.querySelector(
+            'svg.lucide-volume-2, svg.lucide-play, svg.lucide-pause, svg.lucide-square, svg.lucide-mic, svg.lucide-radio, svg.lucide-book-open'
+          )
+        ) {
+          return false;
+        }
         // Inside card-style buttons (e.g. Dashboard cards), allow direct click on content headings/descriptions/cells
         const innerContentEl = target.closest(
           'h1, h2, h3, h4, h5, h6, p, blockquote, li, td, th, dt, dd'

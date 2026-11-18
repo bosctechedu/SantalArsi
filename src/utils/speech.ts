@@ -624,6 +624,97 @@ export function transliterateRomanSantaliToPhoneticDevanagari(text: string): str
   );
 }
 
+const DEVANAGARI_CONSONANTS: Record<string, string> = {
+  'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh', 'ङ': 'ng',
+  'च': 'ch', 'छ': 'chh', 'ज': 'j', 'झ': 'jh', 'ञ': 'ny',
+  'ट': 't', 'ठ': 'th', 'ड': 'd', 'ढ': 'dh', 'ण': 'n',
+  'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
+  'प': 'p', 'फ': 'ph', 'ब': 'b', 'भ': 'bh', 'म': 'm',
+  'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v',
+  'श': 'sh', 'ष': 'sh', 'स': 's', 'ह': 'h',
+  'ड़': 'r', 'ढ़': 'rh', 'क़': 'q', 'ख़': 'kh', 'ग़': 'gh', 'ज़': 'z', 'फ़': 'f', 'य़': 'y'
+};
+
+const DEVANAGARI_INDEP_VOWELS: Record<string, string> = {
+  'अ': 'a', 'आ': 'aa', 'इ': 'i', 'ई': 'ee', 'उ': 'u', 'ऊ': 'oo',
+  'ऋ': 'ri', 'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au', 'ऑ': 'o', 'ऍ': 'e'
+};
+
+const DEVANAGARI_MATRAS: Record<string, string> = {
+  'ा': 'aa', 'ि': 'i', 'ी': 'ee', 'ु': 'u', 'ू': 'oo',
+  'ृ': 'ri', 'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au', 'ॉ': 'o', 'ॅ': 'e'
+};
+
+const DEVANAGARI_DIGITS: Record<string, string> = {
+  '०': '0', '१': '1', '२': '2', '३': '3', '४': '4',
+  '५': '5', '६': '6', '७': '7', '८': '8', '९': '9'
+};
+
+/**
+ * Converts Devanagari words into pronounceable Roman phonetic text so English-only OS voices
+ * (when a user's browser/OS has no hi-IN speech pack) still speak Hindi & Santali aloud instead of staying silent.
+ */
+export function transliterateDevanagariToPhoneticRoman(input: string): string {
+  if (!/[\u0900-\u097F]/.test(input)) return input;
+  const normalized = input.replace(/[।॥]/g, '. ');
+  return normalized.replace(/[\u0900-\u097F]+/g, (word) => {
+    const chars = Array.from(word);
+    let out = '';
+    let consCount = 0;
+
+    for (let i = 0; i < chars.length; i++) {
+      const ch = chars[i];
+      if (DEVANAGARI_DIGITS[ch] !== undefined) {
+        out += DEVANAGARI_DIGITS[ch];
+        continue;
+      }
+      if (DEVANAGARI_INDEP_VOWELS[ch] !== undefined) {
+        out += DEVANAGARI_INDEP_VOWELS[ch];
+        continue;
+      }
+      if (ch === 'ं' || ch === 'ँ') {
+        out += 'n';
+        continue;
+      }
+      if (ch === 'ः') {
+        out += 'h';
+        continue;
+      }
+      if (ch === '़' || ch === '्') {
+        continue;
+      }
+
+      // Check nukta digraphs (e.g. ज + ़)
+      const next = chars[i + 1];
+      const pair = next === '़' ? ch + next : ch;
+      const consVal = DEVANAGARI_CONSONANTS[pair] ?? DEVANAGARI_CONSONANTS[ch];
+      if (consVal !== undefined) {
+        if (pair.length === 2) i++;
+        consCount++;
+        out += consVal;
+        const after = chars[i + 1];
+        if (after === '्') {
+          i++; // Virama suppresses inherent 'a'
+        } else if (after && DEVANAGARI_MATRAS[after] !== undefined) {
+          out += DEVANAGARI_MATRAS[after];
+          i++;
+        } else if (after && after !== 'ं' && after !== 'ँ' && after !== 'ः') {
+          out += 'a';
+        } else if (!after && consCount === 1) {
+          out += 'a';
+        } else if (after === 'ं' || after === 'ँ' || after === 'ः') {
+          out += 'a';
+        }
+        continue;
+      }
+      if (DEVANAGARI_MATRAS[ch] !== undefined) {
+        out += DEVANAGARI_MATRAS[ch];
+      }
+    }
+    return out;
+  });
+}
+
 // Santali Devanagari / Multi-Script phonetic text formatter
 export function formatSpeechText(input: string): string {
   if (!input) return '';
@@ -736,9 +827,11 @@ export function splitIntoSpeechChunks(text: string, maxLen = 145, fineSplitForLa
 // Global reference array & session token to prevent Chrome GC bug and stale callbacks
 let activeUtterances: SpeechSynthesisUtterance[] = [];
 let cachedVoices: SpeechSynthesisVoice[] = [];
+const unreliableVoiceNames = new Set<string>();
 let speechSessionId = 0;
 let pendingStartTimer: ReturnType<typeof setTimeout> | null = null;
 let resumeWatchdogTimer: ReturnType<typeof setInterval> | null = null;
+let stallWatchdogTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Active session playback state for prev/next/jump controls
 let activeSessionMeta: {
@@ -774,6 +867,19 @@ function clearTimers() {
     clearInterval(resumeWatchdogTimer);
     resumeWatchdogTimer = null;
   }
+  if (stallWatchdogTimer) {
+    clearTimeout(stallWatchdogTimer);
+    stallWatchdogTimer = null;
+  }
+}
+
+function isVoiceUsableNow(v: SpeechSynthesisVoice): boolean {
+  if (unreliableVoiceNames.has(v.name)) return false;
+  // Remote network voices fail when offline
+  if (v.localService === false && typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -782,19 +888,24 @@ function clearTimers() {
  */
 export function getVoiceForProfile(
   preferredLang = 'hi-IN',
-  profile: VoiceModelProfile = getActiveVoiceProfile()
+  profile: VoiceModelProfile = getActiveVoiceProfile(),
+  preferLocalOnly = false
 ): SpeechSynthesisVoice | null {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
 
   const liveVoices = window.speechSynthesis.getVoices();
   if (liveVoices && liveVoices.length > 0) cachedVoices = liveVoices;
-  const voices = cachedVoices;
-  if (!voices || voices.length === 0) return null;
+  const allVoices = cachedVoices;
+  if (!allVoices || allVoices.length === 0) return null;
 
-  // 0. Explicit user-pinned OS voice if compatible
+  const usable = allVoices.filter((v) => isVoiceUsableNow(v) && (!preferLocalOnly || v.localService));
+  const voices = usable.length > 0 ? usable : allVoices.filter((v) => !unreliableVoiceNames.has(v.name));
+  const pool = voices.length > 0 ? voices : allVoices;
+
+  // 0. Explicit user-pinned OS voice if not marked broken
   const customSysName = getPreferredSystemVoiceName();
-  if (customSysName) {
-    const pinned = voices.find((v) => v.name === customSysName);
+  if (customSysName && !preferLocalOnly) {
+    const pinned = pool.find((v) => v.name === customSysName);
     if (pinned) return pinned;
   }
 
@@ -805,53 +916,74 @@ export function getVoiceForProfile(
       : ['female', 'swara', 'kavya', 'heera', 'kalpana', 'zira', 'aditi', 'veena', 'sunita', 'geeta', 'shruti', 'neerja', 'samantha', 'victoria', 'karen', 'natasha', 'lekha'];
 
   if (!isEnglish) {
-    const hiExact = voices.find(
+    // Prefer genuine Hindi voices (local OS Hindi first, then remote Hindi)
+    const localHiExact = pool.find(
       (v) =>
-        (v.lang.startsWith('hi') || v.lang.includes('IN')) &&
+        v.localService &&
+        v.lang.toLowerCase().startsWith('hi') &&
+        profile.voiceKeywords.some((k) => v.name.toLowerCase().includes(k))
+    );
+    if (localHiExact) return localHiExact;
+
+    const localHiGender = pool.find(
+      (v) =>
+        v.localService &&
+        v.lang.toLowerCase().startsWith('hi') &&
+        genderKeywords.some((k) => v.name.toLowerCase().includes(k))
+    );
+    if (localHiGender) return localHiGender;
+
+    const localAnyHi = pool.find((v) => v.localService && v.lang.toLowerCase().startsWith('hi'));
+    if (localAnyHi) return localAnyHi;
+
+    const hiExact = pool.find(
+      (v) =>
+        v.lang.toLowerCase().startsWith('hi') &&
         profile.voiceKeywords.some((k) => v.name.toLowerCase().includes(k))
     );
     if (hiExact) return hiExact;
 
-    const hiGender = voices.find(
+    const anyHindi = pool.find((v) => v.lang.toLowerCase().startsWith('hi'));
+    if (anyHindi) return anyHindi;
+
+    // Fallback to Indian English local voice, then any local voice
+    const inGender = pool.find(
       (v) =>
-        (v.lang.startsWith('hi') || v.lang.includes('IN')) &&
+        v.lang.toLowerCase().includes('-in') &&
         genderKeywords.some((k) => v.name.toLowerCase().includes(k))
     );
-    if (hiGender) return hiGender;
+    if (inGender) return inGender;
 
-    const anyHindi = voices.find((v) => v.lang.startsWith('hi'));
-    if (anyHindi) return anyHindi;
+    const indianAny = pool.find((v) => v.lang.toLowerCase().includes('-in'));
+    if (indianAny) return indianAny;
   } else {
-    const enInGender = voices.find(
+    const enInGender = pool.find(
       (v) =>
         v.lang.toLowerCase().includes('en-in') &&
         genderKeywords.some((k) => v.name.toLowerCase().includes(k))
     );
     if (enInGender) return enInGender;
 
-    const enInAny = voices.find((v) => v.lang.toLowerCase().includes('en-in'));
+    const enInAny = pool.find((v) => v.lang.toLowerCase().includes('en-in'));
     if (enInAny) return enInAny;
 
-    const enGender = voices.find(
+    const enGender = pool.find(
       (v) =>
         v.lang.toLowerCase().startsWith('en') &&
         genderKeywords.some((k) => v.name.toLowerCase().includes(k))
     );
     if (enGender) return enGender;
 
-    const anyEn = voices.find((v) => v.lang.toLowerCase().startsWith('en'));
+    const anyEn = pool.find((v) => v.lang.toLowerCase().startsWith('en'));
     if (anyEn) return anyEn;
   }
 
-  const anyGender = voices.find((v) =>
+  const anyGender = pool.find((v) =>
     genderKeywords.some((k) => v.name.toLowerCase().includes(k))
   );
   if (anyGender) return anyGender;
 
-  const indianAny = voices.find((v) => v.lang.includes('IN'));
-  if (indianAny) return indianAny;
-
-  return voices[0] || null;
+  return pool.find((v) => v.localService) || pool[0] || null;
 }
 
 export function getImmediateFemaleVoice(preferredLang = 'hi-IN'): SpeechSynthesisVoice | null {
@@ -1008,7 +1140,7 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
 
   let consecutiveErrors = 0;
 
-  const speakChunk = (idx: number, useFallbackVoice = false) => {
+  const speakChunk = (idx: number, attemptMode: 'primary' | 'local_fallback' | 'roman_fallback' = 'primary') => {
     if (sessionId !== speechSessionId) return;
 
     while (idx < chunks.length && !hasSpeakableContent(chunks[idx])) {
@@ -1038,7 +1170,6 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
     const rawChunkText = chunks[idx];
     const detectedKind = classifyChunkLanguage(rawChunkText, effectiveMode);
 
-    // Prepare spoken acoustic string: Santali Roman uses phonetic Devanagari so Indian voices speak it authentically!
     let spokenPayload = rawChunkText;
     let targetLocale = 'hi-IN';
 
@@ -1047,7 +1178,10 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
       spokenPayload = rawChunkText;
     } else if (detectedKind === 'santali_roman') {
       targetLocale = 'hi-IN';
-      spokenPayload = transliterateRomanSantaliToPhoneticDevanagari(rawChunkText);
+      spokenPayload =
+        attemptMode === 'roman_fallback'
+          ? rawChunkText
+          : transliterateRomanSantaliToPhoneticDevanagari(rawChunkText);
     } else {
       targetLocale = 'hi-IN';
       spokenPayload = rawChunkText;
@@ -1073,38 +1207,121 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
     options?.onChunkChange?.(idx, chunks.length, rawChunkText);
 
     try {
+      const available = getAvailableSystemVoices();
+      const voice =
+        attemptMode === 'primary'
+          ? getVoiceForProfile(targetLocale, activeProfile, false)
+          : getVoiceForProfile(
+              attemptMode === 'roman_fallback' ? 'en-IN' : targetLocale,
+              activeProfile,
+              true
+            ) ||
+            available.find((v) => v.localService && !unreliableVoiceNames.has(v.name)) ||
+            available.find((v) => v.default) ||
+            available[0] ||
+            null;
+
+      // If voice does NOT support Hindi/Devanagari (e.g. en-US / en-IN SAPI only), convert Devanagari to phonetic Roman
+      // so the browser speaks aloud instead of silently skipping all Hindi/Santali words!
+      const voiceIsHindi = Boolean(voice && voice.lang.toLowerCase().startsWith('hi'));
+      if (
+        (attemptMode === 'roman_fallback' || (voice && !voiceIsHindi && /[\u0900-\u097F]/.test(spokenPayload))) &&
+        /[\u0900-\u097F]/.test(spokenPayload)
+      ) {
+        spokenPayload =
+          detectedKind === 'santali_roman'
+            ? rawChunkText
+            : transliterateDevanagariToPhoneticRoman(spokenPayload);
+      }
+
       const utterance = new SpeechSynthesisUtterance(spokenPayload);
       activeUtterances.push(utterance);
 
-      const available = getAvailableSystemVoices();
-      const voice = useFallbackVoice
-        ? (available.find((v) => v.default) || available[0] || null)
-        : getVoiceForProfile(targetLocale, activeProfile);
-
       if (voice) {
         utterance.voice = voice;
+        // Align utterance.lang with the chosen voice's own locale so Chromium/Windows never rejects or mutes it
+        utterance.lang = voice.lang || targetLocale;
+      } else {
+        utterance.lang =
+          attemptMode === 'roman_fallback'
+            ? 'en-US'
+            : targetLocale || 'hi-IN';
       }
 
-      utterance.lang = useFallbackVoice
-        ? (voice?.lang || '')
-        : (targetLocale || voice?.lang || 'hi-IN');
       utterance.pitch = Math.max(0.5, Math.min(2, options?.pitch ?? activeProfile.pitch));
       utterance.rate = Math.max(0.5, Math.min(2, options?.rate ?? activeProfile.rate));
       utterance.volume = options?.volume ?? 1.0;
 
+      let didStart = false;
+      let settled = false;
+      const queuedAt = Date.now();
+
+      if (stallWatchdogTimer) {
+        clearTimeout(stallWatchdogTimer);
+        stallWatchdogTimer = null;
+      }
+
       const cleanup = () => {
+        if (stallWatchdogTimer) {
+          clearTimeout(stallWatchdogTimer);
+          stallWatchdogTimer = null;
+        }
         const uIdx = activeUtterances.indexOf(utterance);
         if (uIdx !== -1) activeUtterances.splice(uIdx, 1);
       };
 
-      utterance.onend = () => {
+      // Stall watchdog: if a remote/cloud voice (e.g. Google हिन्दी) hangs silently without calling onstart/onerror within 2.2s,
+      // cancel and retry cleanly with a local/phonetic fallback voice!
+      stallWatchdogTimer = setTimeout(() => {
+        if (settled || didStart || sessionId !== speechSessionId) return;
+        settled = true;
+        if (voice && !voice.localService) {
+          unreliableVoiceNames.add(voice.name);
+        }
         cleanup();
-        consecutiveErrors = 0;
+        try {
+          synth.cancel();
+        } catch {
+          // ignore
+        }
+        if (attemptMode === 'primary') {
+          speakChunk(idx, 'local_fallback');
+        } else if (attemptMode === 'local_fallback') {
+          speakChunk(idx, 'roman_fallback');
+        } else {
+          speakChunk(idx + 1, 'primary');
+        }
+      }, 2200);
+
+      utterance.onstart = () => {
+        didStart = true;
+        if (stallWatchdogTimer) {
+          clearTimeout(stallWatchdogTimer);
+          stallWatchdogTimer = null;
+        }
+      };
+
+      utterance.onend = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
         if (sessionId !== speechSessionId) return;
-        speakChunk(idx + 1, false);
+
+        // Detect Windows/Chrome silent Devanagari skip (utterance finishes in <110ms without starting)
+        const elapsed = Date.now() - queuedAt;
+        if (!didStart && elapsed < 110 && spokenPayload.length > 8 && attemptMode !== 'roman_fallback') {
+          if (voice) unreliableVoiceNames.add(voice.name);
+          speakChunk(idx, 'roman_fallback');
+          return;
+        }
+
+        consecutiveErrors = 0;
+        speakChunk(idx + 1, 'primary');
       };
 
       utterance.onerror = (e) => {
+        if (settled) return;
+        settled = true;
         cleanup();
         if (sessionId !== speechSessionId) return;
         if (e.error === 'interrupted' || e.error === 'canceled') return;
@@ -1120,8 +1337,16 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
           return;
         }
 
-        if (!useFallbackVoice) {
-          speakChunk(idx, true);
+        if (voice) {
+          unreliableVoiceNames.add(voice.name);
+        }
+
+        if (attemptMode === 'primary') {
+          speakChunk(idx, 'local_fallback');
+          return;
+        }
+        if (attemptMode === 'local_fallback') {
+          speakChunk(idx, 'roman_fallback');
           return;
         }
 
@@ -1133,14 +1358,14 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
             isPaused: false,
             errorMessage:
               available.length === 0
-                ? 'इस डिवाइस/ब्राउज़र में अभी कोई TTS Voice इंस्टॉल या लोड नहीं है। कृपया 10 Voices सेटिंग में सिस्टम आवाज़ जांचें।'
-                : 'ऑडियो वाचन में अस्थायी बाधा आई — कृपया फिर से क्लिक करें या अन्य आवाज़ चुनें।'
+                ? 'इस डिवाइस/ब्राउज़र में अभी कोई TTS Voice इंस्टॉल या लोड नहीं है। कृपया Chrome/Edge का उपयोग करें या OS TTS सेटिंग जांचें।'
+                : 'ऑडियो वाचन में अस्थायी बाधा आई — कृपया 10 Voices मेनू से कोई अन्य सिस्टम आवाज़ चुनें।'
           });
           options?.onEnd?.();
           return;
         }
 
-        speakChunk(idx + 1, false);
+        speakChunk(idx + 1, 'primary');
       };
 
       synth.speak(utterance);
@@ -1149,7 +1374,7 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
       }
     } catch (err) {
       console.error('TTS chunk execution error:', err);
-      speakChunk(idx + 1, false);
+      speakChunk(idx + 1, 'primary');
     }
   };
 
@@ -1158,11 +1383,11 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
   if (wasBusy) {
     pendingStartTimer = setTimeout(() => {
       if (sessionId === speechSessionId) {
-        speakChunk(startIdx, false);
+        speakChunk(startIdx, 'primary');
       }
-    }, 60);
+    }, 75);
   } else {
-    speakChunk(startIdx, false);
+    speakChunk(startIdx, 'primary');
   }
 }
 

@@ -93,8 +93,8 @@ function isActionOnlyButton(btn: Element): boolean {
 
   // Keep rich content card buttons (e.g., Dashboard cards, Month cards, Quiz cards, Phrase cards)
   const hasRichChild = Boolean(btn.querySelector('h1, h2, h3, h4, p, div'));
-  if (hasRichChild && text.length >= 10) return false;
-  if (text.length >= 22) return false;
+  if (hasRichChild && text.length >= 6) return false;
+  if (text.length >= 12) return false;
 
   return true;
 }
@@ -127,7 +127,7 @@ function collectAllLanguageTextFromContainer(container: Element, maxItems = 1500
         return false;
       }
       const style = window.getComputedStyle(cur);
-      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+      if (style.display === 'none' || style.visibility === 'hidden') {
         visibilityCache.set(cur, false);
         visibilityCache.set(el, false);
         return false;
@@ -202,6 +202,15 @@ function collectAllLanguageTextFromContainer(container: Element, maxItems = 1500
     if (lines.length >= maxItems) break;
   }
 
+  if (lines.length === 0) {
+    const fallbackText = ((container as HTMLElement).innerText || container.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (fallbackText.length >= 2) {
+      return fallbackText.slice(0, 12000);
+    }
+  }
+
   return lines.join('। ');
 }
 
@@ -267,6 +276,13 @@ export const HeaderReaderControls: React.FC<{ activeTab: string }> = ({ activeTa
   useEffect(() => {
     return subscribeSpeechState((snap) => setSpeech(snap));
   }, []);
+
+  // Reset stale captured section text/notice whenever user switches modules
+  useEffect(() => {
+    setLastClickedSectionText('');
+    setLastClickedSectionTitle('');
+    setReaderNotice(null);
+  }, [activeTab]);
 
   useEffect(() => {
     const syncVoice = () => {
@@ -1090,9 +1106,44 @@ export const HeaderReaderControls: React.FC<{ activeTab: string }> = ({ activeTa
 };
 
 /**
- * Bottom-Right Corner: Clean Horizontal < > Navigation (Top/Start < and Bottom/End >)
+ * Bottom-Right Corner: Quick Section Text Reader + < > Navigation (Top/Start < and Bottom/End >)
  */
 export const GlobalTextReaderBar: React.FC<{ activeTab: string }> = () => {
+  const [speech, setSpeech] = useState<SpeechStateSnapshot>({
+    isSpeaking: false,
+    isPaused: false,
+    fullText: '',
+    currentChunkText: '',
+    chunkIndex: 0,
+    totalChunks: 0,
+    errorMessage: null
+  });
+
+  useEffect(() => {
+    return subscribeSpeechState((snap) => setSpeech(snap));
+  }, []);
+
+  const handleQuickReadSection = () => {
+    if (speech.isSpeaking && !speech.isPaused) {
+      pauseSpeaking();
+      return;
+    }
+    if (speech.isPaused) {
+      resumeSpeaking();
+      return;
+    }
+    const root = getWorkspaceRoot();
+    const text = collectAllLanguageTextFromContainer(root, 1500);
+    if (!text) return;
+    const prof = getActiveVoiceProfile();
+    speakWithFemaleVoice(text, {
+      autoDetectLanguage: true,
+      readingLangMode: getReadingLanguageMode(),
+      voiceProfileId: prof.id,
+      rate: prof.rate
+    });
+  };
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     const mainEl = document.querySelector('main[data-workspace-main="true"]');
@@ -1111,6 +1162,57 @@ export const GlobalTextReaderBar: React.FC<{ activeTab: string }> = () => {
       data-admin-ui="true"
       className="fixed bottom-4 right-4 z-40 flex items-center gap-1 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-lg p-1 print:hidden"
     >
+      <button
+        type="button"
+        data-reader-action="true"
+        onClick={handleQuickReadSection}
+        title={
+          speech.isSpeaking && !speech.isPaused
+            ? 'वाचन रोकें (Pause)'
+            : speech.isPaused
+              ? 'वाचन जारी रखें (Resume)'
+              : 'इस सेक्शन का पूरा पाठ पढ़कर सुनें (Read Section)'
+        }
+        aria-label="Read current section"
+        className={`h-9 px-2.5 rounded-lg border flex items-center justify-center gap-1.5 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+          speech.isSpeaking && !speech.isPaused
+            ? 'bg-amber-600 text-white border-amber-600'
+            : speech.isPaused
+              ? 'bg-emerald-600 text-white border-emerald-600'
+              : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
+        }`}
+      >
+        {speech.isSpeaking && !speech.isPaused ? (
+          <>
+            <Pause className="w-3.5 h-3.5 fill-white" />
+            <span className="hidden sm:inline">रोकें</span>
+          </>
+        ) : speech.isPaused ? (
+          <>
+            <Play className="w-3.5 h-3.5 fill-white" />
+            <span className="hidden sm:inline">जारी</span>
+          </>
+        ) : (
+          <>
+            <Volume2 className="w-4 h-4 text-amber-700" />
+            <span className="hidden sm:inline">सुनें</span>
+          </>
+        )}
+      </button>
+
+      {(speech.isSpeaking || speech.isPaused) && (
+        <button
+          type="button"
+          data-reader-action="true"
+          onClick={stopSpeaking}
+          title="वाचन बंद करें (Stop)"
+          aria-label="Stop reading"
+          className="w-9 h-9 rounded-lg bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer"
+        >
+          <Square className="w-3.5 h-3.5 fill-white" />
+        </button>
+      )}
+
       <button
         onClick={scrollToTop}
         title="सबसे ऊपर जाएँ (< Top / Start)"

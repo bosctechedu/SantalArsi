@@ -53,9 +53,13 @@ export class ErrorBoundary extends Component<Props, State> {
       }
       // Clear app state keys without losing admin password
       const adminPass = localStorage.getItem('hor_katha_admin_password');
+      const adminPassSet = localStorage.getItem('hor_katha_admin_password_set');
       localStorage.clear();
       if (adminPass) {
         localStorage.setItem('hor_katha_admin_password', adminPass);
+      }
+      if (adminPassSet) {
+        localStorage.setItem('hor_katha_admin_password_set', adminPassSet);
       }
       window.location.reload();
     } catch {

@@ -124,6 +124,8 @@ export const AdminMasterStudio: React.FC<{ onClose?: () => void; initialTab?: Ad
     isSuperAdmin,
     adminRole,
     adminId,
+    hasAdminPasswordSet,
+    deleteAdminPassword,
     operators,
     createOperator,
     updateOperator,
@@ -199,6 +201,8 @@ export const AdminMasterStudio: React.FC<{ onClose?: () => void; initialTab?: Ad
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
   const [notification, setNotification] = useState<string | null>(null);
   const [downloadingZipKind, setDownloadingZipKind] = useState<'dist' | 'source' | null>(null);
+  const [confirmDeleteStudioPass, setConfirmDeleteStudioPass] = useState(false);
+  const [deletingStudioPass, setDeletingStudioPass] = useState(false);
 
   useEffect(() => {
     if (initialTab) {
@@ -5416,6 +5420,75 @@ export const AdminMasterStudio: React.FC<{ onClose?: () => void; initialTab?: Ad
               </button>
             </div>
           </div>
+
+          {/* Super Admin Password Lock & Delete Control */}
+          {isSuperAdmin && (
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-amber-600" />
+                    <span>Super Admin पासवर्ड सुरक्षा (Password Lock)</span>
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {hasAdminPasswordSet
+                      ? 'पासवर्ड १ बार सेट व लॉक हो चुका है। जब तक आप यहाँ से Delete नहीं करेंगे, दोबारा Reset Password नहीं मांगा जाएगा।'
+                      : 'अभी कोई कस्टम पासवर्ड सेट नहीं है — Admin Login पोर्टल में जाकर Email OTP से १ बार पासवर्ड सेट कर सकते हैं।'}
+                  </p>
+                </div>
+                <span
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${
+                    hasAdminPasswordSet
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-900'
+                  }`}
+                >
+                  {hasAdminPasswordSet ? '🔒 सेट व लॉक है' : '🔓 सेट नहीं है'}
+                </span>
+              </div>
+
+              {hasAdminPasswordSet && (
+                <div className="pt-1 flex flex-wrap items-center gap-2">
+                  {!confirmDeleteStudioPass ? (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteStudioPass(true)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold text-xs cursor-pointer transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Admin Password Delete करें</span>
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        disabled={deletingStudioPass}
+                        onClick={async () => {
+                          setDeletingStudioPass(true);
+                          const res = await deleteAdminPassword();
+                          setDeletingStudioPass(false);
+                          setConfirmDeleteStudioPass(false);
+                          showNotification(res.message);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white font-bold text-xs cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>{deletingStudioPass ? 'हटाया जा रहा है...' : 'हाँ, पासवर्ड Delete करें'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={deletingStudioPass}
+                        onClick={() => setConfirmDeleteStudioPass(false)}
+                        className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-semibold text-xs cursor-pointer"
+                      >
+                        रद्द करें
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Cloudflare Pages Ready-to-Upload Bundles */}
           <div className="p-5 rounded-2xl bg-gradient-to-r from-orange-50 via-amber-50 to-white border border-orange-200 space-y-3">

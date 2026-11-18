@@ -18,7 +18,8 @@ import {
   Download,
   Mail,
   Send,
-  ShieldCheck
+  ShieldCheck,
+  Trash2
 } from 'lucide-react';
 
 interface AdminLoginModalProps {
@@ -40,12 +41,14 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     isLiveEditMode,
     setIsLiveEditMode,
     adminId,
+    hasAdminPasswordSet,
     loginAdminWithServerSync,
     logoutAdmin,
     getAdminOtpStatus,
     requestAdminEmailOtp,
     verifyAdminOtpAndSetPassword,
-    verifyAdminGoogleAndSetPassword
+    verifyAdminGoogleAndSetPassword,
+    deleteAdminPassword
   } = useAdmin();
 
   // Active view tab: 'login' | 'reset'
@@ -63,8 +66,14 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   const [otpConfigStatus, setOtpConfigStatus] = useState<{
     emailOtpConfigured: boolean;
     provider: 'emailjs' | 'resend' | 'webhook' | 'none';
+    hasCustomServerPassword?: boolean;
   } | null>(null);
   const [otpCooldown, setOtpCooldown] = useState(0);
+  const [confirmDeletePass, setConfirmDeletePass] = useState(false);
+  const [deletingPass, setDeletingPass] = useState(false);
+
+  const isPasswordLocked =
+    hasAdminPasswordSet || Boolean(otpConfigStatus?.hasCustomServerPassword);
 
   // Logged-out Reset by Email OTP form state
   const [resetEmail, setResetEmail] = useState(SUPER_ADMIN_EMAIL);
@@ -103,7 +112,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       if (mounted) {
         setOtpConfigStatus({
           emailOtpConfigured: status.emailOtpConfigured,
-          provider: status.provider
+          provider: status.provider,
+          hasCustomServerPassword: status.hasCustomServerPassword
         });
       }
     });
@@ -111,6 +121,15 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       mounted = false;
     };
   }, [isOpen, getAdminOtpStatus]);
+
+  useEffect(() => {
+    if (isPasswordLocked && activeTab === 'reset') {
+      setActiveTab('login');
+    }
+    if (isPasswordLocked && showChangePassInline) {
+      setShowChangePassInline(false);
+    }
+  }, [isPasswordLocked, activeTab, showChangePassInline]);
 
   useEffect(() => {
     if (otpCooldown <= 0) return;
@@ -372,6 +391,23 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     }
   };
 
+  const handleDeleteAdminPassword = async () => {
+    if (deletingPass) return;
+    setDeletingPass(true);
+    setInlineMsg(null);
+    const res = await deleteAdminPassword();
+    setDeletingPass(false);
+    setConfirmDeletePass(false);
+    if (res.success) {
+      setOtpConfigStatus((prev) =>
+        prev ? { ...prev, hasCustomServerPassword: false } : prev
+      );
+      setInlineMsg({ success: true, text: res.message });
+    } else {
+      setInlineMsg({ success: false, text: res.message });
+    }
+  };
+
   const handleLogout = () => {
     logoutAdmin();
     onClose();
@@ -548,42 +584,94 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 </div>
               )}
 
-              {/* Super Admin Only: Inline Email OTP Password Security Settings */}
+              {/* Super Admin Only: Admin Password Lock & Email OTP Security Settings */}
               {isSuperAdmin ? (
                 <div className="bg-slate-50 rounded-2xl border border-slate-200/80 p-4 space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                         <KeyRound className="w-4 h-4 text-amber-600" />
-                        <span>Admin Password (Email OTP)</span>
+                        <span>Admin Password Security</span>
                       </span>
-                      {otpConfigStatus && (
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            otpConfigStatus.emailOtpConfigured
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {otpConfigStatus.emailOtpConfigured
-                            ? `Email OTP Active (${otpConfigStatus.provider.toUpperCase()})`
-                            : 'EmailJS / Resend Pending'}
-                        </span>
-                      )}
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                          isPasswordLocked
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {isPasswordLocked ? '🔒 Password Set & Locked' : 'Password Not Set'}
+                      </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowChangePassInline(!showChangePassInline);
-                        setInlineMsg(null);
-                      }}
-                      className="text-xs text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer shrink-0"
-                    >
-                      {showChangePassInline ? 'Hide' : 'Set by Email OTP'}
-                    </button>
+                    {!isPasswordLocked && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowChangePassInline(!showChangePassInline);
+                          setInlineMsg(null);
+                        }}
+                        className="text-xs text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer shrink-0"
+                      >
+                        {showChangePassInline ? 'Hide' : 'Set by Email OTP'}
+                      </button>
+                    )}
                   </div>
 
-                  {showChangePassInline && (
+                  {isPasswordLocked ? (
+                    <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200 space-y-2.5">
+                      <p className="text-[11px] text-emerald-950 leading-relaxed">
+                        आपका Admin पासवर्ड १ बार सेट व लॉक हो चुका है। जब तक आप इसे Delete नहीं करेंगे, लॉगिन या सेटिंग्स में दोबारा Reset Password नहीं मांगा जाएगा।
+                      </p>
+                      {!confirmDeletePass ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setConfirmDeletePass(true);
+                            setInlineMsg(null);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold text-[11px] cursor-pointer transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Admin Password Delete करें</span>
+                        </button>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            disabled={deletingPass}
+                            onClick={handleDeleteAdminPassword}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white font-bold text-[11px] cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>{deletingPass ? 'Deleting...' : 'हाँ, पासवर्ड Delete करें'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={deletingPass}
+                            onClick={() => setConfirmDeletePass(false)}
+                            className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-semibold text-[11px] cursor-pointer"
+                          >
+                            रद्द करें
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    inlineMsg &&
+                    !showChangePassInline && (
+                      <p
+                        className={`text-xs font-semibold p-2 rounded-xl border ${
+                          inlineMsg.success
+                            ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                            : 'text-rose-700 bg-rose-50 border-rose-200'
+                        }`}
+                      >
+                        {inlineMsg.text}
+                      </p>
+                    )
+                  )}
+
+                  {!isPasswordLocked && showChangePassInline && (
                     <form onSubmit={handleInlineChangePass} className="space-y-3 pt-1">
                       {/* Step 1: Send OTP to bosctechedu@gmail.com */}
                       <div className="p-3 rounded-xl bg-white border border-slate-200 space-y-2">
@@ -739,42 +827,54 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           ) : (
             /* Logged Out: Tabbed Navigation (Sign In & Reset Password) */
             <div className="space-y-4">
-              {/* Tabs Switcher: Sign In vs Reset Password */}
-              <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('login');
-                    setLoginError(null);
-                  }}
-                  className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    activeTab === 'login'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Lock className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Admin Sign In</span>
-                </button>
+              {/* Tabs Switcher: Hide Set/Reset Password tab once password is set & locked */}
+              {!isPasswordLocked ? (
+                <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('login');
+                      setLoginError(null);
+                    }}
+                    className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      activeTab === 'login'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Lock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Admin Sign In</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('reset');
-                    setResetError(null);
-                    setResetSuccessMessage(null);
-                    setResetOtpNotice(null);
-                  }}
-                  className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    activeTab === 'reset'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Mail className="w-3.5 h-3.5 text-orange-600" />
-                  <span>Password by Email OTP</span>
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('reset');
+                      setResetError(null);
+                      setResetSuccessMessage(null);
+                      setResetOtpNotice(null);
+                    }}
+                    className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      activeTab === 'reset'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Mail className="w-3.5 h-3.5 text-orange-600" />
+                    <span>Set Password (Email OTP)</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between px-3.5 py-2.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs">
+                  <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Admin Sign In</span>
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                    🔒 पासवर्ड सेट व लॉक है
+                  </span>
+                </div>
+              )}
 
               {/* Strict Requirement Notice: Only bosctechedu@gmail.com Super Admin + Admin-created Operators */}
               <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-xs text-amber-950 space-y-1.5">
@@ -829,13 +929,15 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                       <label className="text-xs font-bold text-slate-700">
                         Password / Operator Passcode
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('reset')}
-                        className="text-[11px] text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer"
-                      >
-                        Set/Reset Password via Email OTP?
-                      </button>
+                      {!isPasswordLocked && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('reset')}
+                          className="text-[11px] text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer"
+                        >
+                          1 बार Password सेट करें (Email OTP)?
+                        </button>
+                      )}
                     </div>
                     <div className="relative">
                       <input
@@ -897,8 +999,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 </form>
               )}
 
-              {/* TAB 2: SET / RESET SUPER ADMIN PASSWORD BY EMAIL OTP */}
-              {activeTab === 'reset' && (
+              {/* TAB 2: SET SUPER ADMIN PASSWORD BY EMAIL OTP (Only visible when no password is set / after deletion) */}
+              {!isPasswordLocked && activeTab === 'reset' && (
                 <form onSubmit={handleResetSubmit} className="space-y-3.5">
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/90 text-xs text-slate-600 space-y-1">
                     <div className="flex items-center justify-between gap-2">

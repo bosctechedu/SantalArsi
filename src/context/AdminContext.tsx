@@ -121,6 +121,7 @@ interface AdminContextType {
   setIsLiveEditMode: (val: boolean) => void;
   adminId: string;
   operators: AdminOperator[];
+  hasAdminPasswordSet: boolean;
   loginAdmin: (passcodeOrId: string, passcode?: string) => boolean;
   loginAdminWithServerSync: (
     id: string,
@@ -132,11 +133,13 @@ interface AdminContextType {
     provider: 'emailjs' | 'resend' | 'webhook' | 'none';
     targetEmail: string;
     hasCustomServerPassword: boolean;
+    storagePersistent?: boolean;
   }>;
   requestAdminEmailOtp: (email: string) => Promise<{
     success: boolean;
     message: string;
     setupRequired?: boolean;
+    passwordLocked?: boolean;
     retryAfterSeconds?: number;
     expiresInSeconds?: number;
     otpToken?: string;
@@ -150,6 +153,7 @@ interface AdminContextType {
   verifyAdminGoogleAndSetPassword: (
     newPassword: string
   ) => Promise<{ success: boolean; message: string }>;
+  deleteAdminPassword: () => Promise<{ success: boolean; message: string }>;
   resetAdminPassword: (adminIdOrRecoveryKey: string, newPassword: string) => { success: boolean; message: string };
   updateAdminId: (newId: string) => void;
   createOperator: (input: {
@@ -540,6 +544,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [adminPassword, setAdminPassword] = useState<string>(() => {
     return localStorage.getItem('hor_katha_admin_password') || 'admin123';
   });
+  const [hasAdminPasswordSet, setHasAdminPasswordSet] = useState<boolean>(() => {
+    const flagged = localStorage.getItem('hor_katha_admin_password_set') === 'true';
+    const stored = localStorage.getItem('hor_katha_admin_password');
+    return flagged || Boolean(stored && stored !== 'admin123');
+  });
 
   const refreshOperators = async () => {
     if (!isSuperAdmin) return;
@@ -625,6 +634,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (res.ok && data?.success) {
           setAdminPassword(cleanPass);
           localStorage.setItem('hor_katha_admin_password', cleanPass);
+          if (data?.hasServerPassword) {
+            setHasAdminPasswordSet(true);
+            localStorage.setItem('hor_katha_admin_password_set', 'true');
+          }
           setAdminRole('super_admin');
           setAdminId(SUPER_ADMIN_EMAIL);
           setIsAdmin(true);
@@ -634,6 +647,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return { success: true, role: 'super_admin' };
         }
         if (res.status === 401 || res.status === 403) {
+          if (data?.hasServerPassword === false && hasAdminPasswordSet && loginAdmin(cleanId, cleanPass)) {
+            return { success: true, role: 'super_admin' };
+          }
           return {
             success: false,
             message: data?.error || 'अमान्य Super Admin पासवर्ड। कृपया सही पासवर्ड दर्ज करें।'
@@ -648,7 +664,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       return {
         success: false,
-        message: 'अमान्य Super Admin पासवर्ड। कृपया सही पासवर्ड दर्ज करें या Email OTP से रीसेट करें।'
+        message: hasAdminPasswordSet
+          ? 'अमान्य Super Admin पासवर्ड। कृपया सही पासवर्ड दर्ज करें।'
+          : 'अमान्य Super Admin पासवर्ड। कृपया सही पासवर्ड दर्ज करें या Email OTP से सेट करें।'
       };
     }
 
@@ -697,6 +715,14 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const res = await fetch('/api/admin/otp-status', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
+        const serverHasPass = Boolean(data?.hasCustomServerPassword);
+        const persistent = Boolean(data?.storagePersistent);
+        if (serverHasPass) {
+          setHasAdminPasswordSet(true);
+          localStorage.setItem('hor_katha_admin_password_set', 'true');
+        } else if (persistent && !localStorage.getItem('hor_katha_admin_password_set')) {
+          setHasAdminPasswordSet(false);
+        }
         return {
           emailOtpConfigured: Boolean(data?.emailOtpConfigured),
           provider:
@@ -706,7 +732,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               ? data.provider
               : 'none',
           targetEmail: data?.targetEmail || SUPER_ADMIN_EMAIL,
-          hasCustomServerPassword: Boolean(data?.hasCustomServerPassword)
+          hasCustomServerPassword: serverHasPass,
+          storagePersistent: persistent
         };
       }
     } catch {
@@ -716,7 +743,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       emailOtpConfigured: false,
       provider: 'none',
       targetEmail: SUPER_ADMIN_EMAIL,
-      hasCustomServerPassword: false
+      hasCustomServerPassword: false,
+      storagePersistent: false
     };
   };
 
@@ -758,6 +786,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           data?.error ||
           `Email OTP भेजने में त्रुटि (HTTP ${res.status})। कृपया EmailJS Security व Cloudflare Variables जाँचें।`,
         setupRequired: Boolean(data?.setupRequired),
+        passwordLocked: Boolean(data?.passwordLocked),
         retryAfterSeconds: data?.retryAfterSeconds
       };
     } catch {
@@ -818,10 +847,12 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (res.ok && data?.success) {
         setAdminPassword(cleanPass);
         localStorage.setItem('hor_katha_admin_password', cleanPass);
+        localStorage.setItem('hor_katha_admin_password_set', 'true');
+        setHasAdminPasswordSet(true);
         return {
           success: true,
           message:
-            data.message || 'Email OTP सत्यापित! नया Super Admin पासवर्ड सेव हो गया।'
+            data.message || 'Email OTP सत्यापित! नया Super Admin पासवर्ड सेव व लॉक हो गया।'
         };
       }
       return {
@@ -872,10 +903,12 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (res.ok && data?.success) {
         setAdminPassword(cleanPass);
         localStorage.setItem('hor_katha_admin_password', cleanPass);
+        localStorage.setItem('hor_katha_admin_password_set', 'true');
+        setHasAdminPasswordSet(true);
         return {
           success: true,
           message:
-            data.message || `Google खाता (${SUPER_ADMIN_EMAIL}) सत्यापित! नया Admin पासवर्ड सेव हो गया।`
+            data.message || `Google खाता (${SUPER_ADMIN_EMAIL}) सत्यापित! नया Admin पासवर्ड सेव व लॉक हो गया।`
         };
       }
       return {
@@ -916,9 +949,42 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const trimmed = newPassword.trim();
     setAdminPassword(trimmed);
     localStorage.setItem('hor_katha_admin_password', trimmed);
+    localStorage.setItem('hor_katha_admin_password_set', 'true');
+    setHasAdminPasswordSet(true);
     return {
       success: true,
       message: 'Super Admin पासवर्ड अपडेट हो गया!'
+    };
+  };
+
+  const deleteAdminPassword: AdminContextType['deleteAdminPassword'] = async () => {
+    if (!isSuperAdmin) {
+      return {
+        success: false,
+        message: `केवल मुख्य एडमिन (${SUPER_ADMIN_EMAIL}) ही Admin पासवर्ड Delete कर सकते हैं।`
+      };
+    }
+
+    try {
+      await fetch('/api/admin/delete-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-bosc-admin-role': 'super_admin',
+          'x-bosc-admin-id': SUPER_ADMIN_EMAIL
+        }
+      });
+    } catch {
+      // Offline / local clear still proceeds below
+    }
+
+    localStorage.removeItem('hor_katha_admin_password');
+    localStorage.removeItem('hor_katha_admin_password_set');
+    setAdminPassword('admin123');
+    setHasAdminPasswordSet(false);
+    return {
+      success: true,
+      message: 'Admin पासवर्ड सफलतापूर्वक Delete कर दिया गया है। अब आप Email OTP से नया पासवर्ड सेट कर सकते हैं।'
     };
   };
 
@@ -1640,6 +1706,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setIsLiveEditMode,
       adminId,
       operators,
+      hasAdminPasswordSet,
       loginAdmin,
       loginAdminWithServerSync,
       logoutAdmin,
@@ -1647,6 +1714,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       requestAdminEmailOtp,
       verifyAdminOtpAndSetPassword,
       verifyAdminGoogleAndSetPassword,
+      deleteAdminPassword,
       resetAdminPassword,
       updateAdminId,
       createOperator,
@@ -1713,6 +1781,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       adminRole,
       isLiveEditMode,
       adminId,
+      hasAdminPasswordSet,
       operators,
       heroConfig,
       officialFestivalOverrides,

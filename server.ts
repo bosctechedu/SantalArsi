@@ -979,7 +979,8 @@ app.get('/api/admin/otp-status', (_req, res) => {
     emailOtpConfigured: provider !== 'none',
     provider,
     targetEmail: SUPER_ADMIN_EMAIL,
-    hasCustomServerPassword: Boolean(store.adminAuth?.passwordHash)
+    hasCustomServerPassword: Boolean(store.adminAuth?.passwordHash),
+    storagePersistent: true
   });
 });
 
@@ -1014,6 +1015,14 @@ app.post('/api/admin/request-otp', async (req, res) => {
   }
 
   const store = loadStoreFromDisk();
+  if (store.adminAuth?.passwordHash && store.adminAuth?.passwordSalt) {
+    res.status(423).json({
+      error:
+        'Admin पासवर्ड पहले से सेट और लॉक है। जब तक आप Admin Settings से वर्तमान पासवर्ड Delete नहीं करते, दोबारा पासवर्ड रीसेट नहीं होगा।',
+      passwordLocked: true
+    });
+    return;
+  }
   const now = Date.now();
   const lastSent = store.adminAuth?.lastOtpSentAt || 0;
   const elapsedMs = now - lastSent;
@@ -1108,6 +1117,14 @@ app.post('/api/admin/verify-otp-password', async (req, res) => {
 
   const store = loadStoreFromDisk();
   const auth = store.adminAuth || {};
+  if (auth.passwordHash && auth.passwordSalt) {
+    res.status(423).json({
+      error:
+        'Admin पासवर्ड पहले से सेट और लॉक है। नया पासवर्ड सेट करने के लिए पहले वर्तमान पासवर्ड Delete करें।',
+      passwordLocked: true
+    });
+    return;
+  }
 
   let activeHash = auth.otpHash;
   let activeSalt = auth.otpSalt;
@@ -1213,6 +1230,14 @@ app.post('/api/admin/google-verify-password', async (req, res) => {
     }
 
     const store = loadStoreFromDisk();
+    if (store.adminAuth?.passwordHash && store.adminAuth?.passwordSalt) {
+      res.status(423).json({
+        error:
+          'Admin पासवर्ड पहले से सेट और लॉक है। नया पासवर्ड सेट करने के लिए पहले वर्तमान पासवर्ड Delete करें।',
+        passwordLocked: true
+      });
+      return;
+    }
     const passDigest = await hashSecretWithSalt(newPassword);
     store.adminAuth = {
       passwordHash: passDigest.hash,
@@ -1250,7 +1275,7 @@ app.post('/api/admin/super-login', async (req, res) => {
   if (auth?.passwordHash && auth?.passwordSalt) {
     const candidate = await hashSecretWithSalt(cleanPassword, auth.passwordSalt);
     if (!constantTimeEqual(candidate.hash, auth.passwordHash)) {
-      res.status(401).json({ error: 'अमान्य Super Admin पासवर्ड।' });
+      res.status(401).json({ error: 'अमान्य Super Admin पासवर्ड।', hasServerPassword: true });
       return;
     }
     res.json({ success: true, role: 'super_admin', email: SUPER_ADMIN_EMAIL, hasServerPassword: true });
@@ -1259,11 +1284,29 @@ app.post('/api/admin/super-login', async (req, res) => {
 
   const defaultPass = (process.env.DEFAULT_ADMIN_PASSWORD || 'admin123').trim();
   if (!constantTimeEqual(cleanPassword, defaultPass)) {
-    res.status(401).json({ error: 'अमान्य Super Admin पासवर्ड।' });
+    res.status(401).json({ error: 'अमान्य Super Admin पासवर्ड।', hasServerPassword: false });
     return;
   }
 
   res.json({ success: true, role: 'super_admin', email: SUPER_ADMIN_EMAIL, hasServerPassword: false });
+});
+
+// STRICTLY Super Admin (bosctechedu@gmail.com): Delete / Clear Admin Password to unlock future setup
+app.post('/api/admin/delete-password', (req, res) => {
+  if (!isSuperAdminHeaders(req.headers)) {
+    res.status(403).json({
+      error: `केवल मुख्य एडमिन (${SUPER_ADMIN_EMAIL}) ही Admin पासवर्ड Delete कर सकते हैं।`
+    });
+    return;
+  }
+  const store = loadStoreFromDisk();
+  store.adminAuth = { updatedAt: Date.now() };
+  saveStoreToDisk(store);
+  res.json({
+    success: true,
+    hasCustomServerPassword: false,
+    message: 'Admin पासवर्ड सफलतापूर्वक Delete कर दिया गया है। अब आप Email OTP से नया पासवर्ड सेट कर सकते हैं।'
+  });
 });
 
 // Normal User Email Login (Self-Customization Only - strictly isolated per email)
