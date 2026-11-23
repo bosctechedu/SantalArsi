@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   speakWithFemaleVoice,
   pauseSpeaking,
@@ -9,7 +9,20 @@ import {
   TOP_10_VOICE_MODELS,
   getActiveVoiceProfile,
   setActiveVoiceProfile,
-  VoiceModelProfile
+  VoiceModelProfile,
+  ReadingLanguageMode,
+  getReadingLanguageMode,
+  setReadingLanguageMode,
+  getAvailableSystemVoices,
+  getResolvedTrilingualVoices,
+  getPreferredHindiSantaliVoiceName,
+  setPreferredHindiSantaliVoiceName,
+  getPreferredEnglishVoiceName,
+  setPreferredEnglishVoiceName,
+  getUserSpeechRate,
+  setUserSpeechRate,
+  getUserSpeechPitch,
+  setUserSpeechPitch
 } from '../utils/speech';
 import { toDevanagariAuto, toOlChikiAuto } from '../utils/olChikiTranslit';
 import {
@@ -21,29 +34,63 @@ import {
   Sparkles,
   Radio,
   FileText,
-  Mic
+  Mic,
+  Languages
 } from 'lucide-react';
 
+const SPEAKER_LANG_OPTIONS: { id: ReadingLanguageMode; label: string }[] = [
+  { id: 'all', label: '3 भाषा (All)' },
+  { id: 'english', label: 'English' },
+  { id: 'hindi', label: 'हिन्दी (Hindi)' },
+  { id: 'santali_roman', label: 'Santali Roman' }
+];
+
 export const TextSpeakerReader: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
-  const [inputText, setInputText] = useState('जोहार! होड़ कथा सुइट रे आपे जोतो को सागुनदाराम! आबो रोड़, आबो उपरुम, आबो गोरोब।');
+  const [inputText, setInputText] = useState('जोहार! Santal आ़रसी रे आपे जोतो को सागुनदाराम! आबो रोड़, आबो उपरुम, आबो गोरोब।');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [activeChunkText, setActiveChunkText] = useState('');
   const [chunkProgress, setChunkProgress] = useState<{ idx: number; total: number }>({ idx: 0, total: 0 });
   const [voiceProfile, setVoiceProfile] = useState<VoiceModelProfile>(() => getActiveVoiceProfile());
-  const [speechRate, setSpeechRate] = useState(() => getActiveVoiceProfile().rate);
-  const [speechPitch, setSpeechPitch] = useState(() => getActiveVoiceProfile().pitch);
+  const [readingLangMode, setReadingLangModeState] = useState<ReadingLanguageMode>(() =>
+    getReadingLanguageMode()
+  );
+  const [speechRate, setSpeechRate] = useState(() => getUserSpeechRate());
+  const [speechPitch, setSpeechPitch] = useState(() => getUserSpeechPitch());
   const [testStatus, setTestStatus] = useState<string | null>(null);
+  const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>(() => getAvailableSystemVoices());
+  const [preferredHiVoice, setPreferredHiVoice] = useState<string>(() => getPreferredHindiSantaliVoiceName());
+  const [preferredEnVoice, setPreferredEnVoice] = useState<string>(() => getPreferredEnglishVoiceName());
 
   useEffect(() => {
+    const refreshSystemVoices = () => {
+      setSystemVoices(getAvailableSystemVoices());
+    };
     const syncVoice = () => {
       const p = getActiveVoiceProfile();
       setVoiceProfile(p);
-      setSpeechRate(p.rate);
-      setSpeechPitch(p.pitch);
+      setSpeechRate(getUserSpeechRate());
+      setSpeechPitch(getUserSpeechPitch());
+      setPreferredHiVoice(getPreferredHindiSantaliVoiceName());
+      setPreferredEnVoice(getPreferredEnglishVoiceName());
+      refreshSystemVoices();
     };
+    const syncLang = () => {
+      setReadingLangModeState(getReadingLanguageMode());
+    };
+    refreshSystemVoices();
     window.addEventListener('hor-katha-voice-changed', syncVoice);
-    return () => window.removeEventListener('hor-katha-voice-changed', syncVoice);
+    window.addEventListener('hor-katha-reading-lang-changed', syncLang);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.addEventListener?.('voiceschanged', refreshSystemVoices);
+    }
+    return () => {
+      window.removeEventListener('hor-katha-voice-changed', syncVoice);
+      window.removeEventListener('hor-katha-reading-lang-changed', syncLang);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.removeEventListener?.('voiceschanged', refreshSystemVoices);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -55,22 +102,44 @@ export const TextSpeakerReader: React.FC<{ compact?: boolean }> = ({ compact = f
     });
   }, []);
 
-  const presets = [
-    { label: 'जोहार (Johar)', text: 'जोहार! आबो संताली भाषा आर साहित्य जियाड़ ताहेन मा।' },
-    { label: 'सागुन सेताक (सुप्रभात)', text: 'सागुन सेताक! तेहेञाक दिन दो आड़ि नापाय आर रासका ते पेरेज कोक मा।' },
-    { label: 'सोहराय पोरोब (सोहराय)', text: 'सोहराय पोरोब रेनाक आयमा आयमा सागुन जोहार आर रासका। गाय-डांगरा को लागीत भक्ति आर सम्मान।' },
-    { label: 'आबो उपरुम (ध्वज वाक्य)', text: 'ओल चेमेद्, रोड़ चेमेद्। आबो रोड़, आबो उपरुम, आबो गोरोब।' },
-    { label: 'हिन्दी परिचय', text: 'नमस्कार! होड़ कथा सुइट में आपका हार्दिक स्वागत है। यहाँ आप संताली भाषा, संस्कृति और साहित्य पूरा पढ़कर सुन सकते हैं।' },
-    { label: 'English Johar', text: 'Johar! Welcome to the Hor Katha Suite digital linguistic platform for Santali language and heritage.' }
+  const presets: { label: string; text: string; langMode: ReadingLanguageMode }[] = [
+    {
+      label: '3-भाषा शुद्ध परीक्षण (HI+EN+Santali)',
+      text: 'जोहार! संताली पारसी आ़डी नापाय काना, आबोन जोतो होड़ संताली बोन पढ़ावा। हिन्दी हमारी गौरवशाली भाषा है। And now I am reading clear, natural English smoothly for you.',
+      langMode: 'all'
+    },
+    { label: 'जोहार (Johar)', text: 'जोहार! आबो संताली भाषा आर साहित्य जियाड़ ताहेन मा।', langMode: 'all' },
+    { label: 'सागुन सेताक (सुप्रभात)', text: 'सागुन सेताक! तेहेञाक दिन दो आड़ि नापाय आर रासका ते पेरेज कोक मा।', langMode: 'all' },
+    { label: 'सोहराय पोरोब (सोहराय)', text: 'सोहराय पोरोब रेनाक आयमा आयमा सागुन जोहार आर रासका। गाय-डांगरा को लागीत भक्ति आर सम्मान।', langMode: 'all' },
+    { label: 'हिन्दी परिचय', text: 'नमस्कार! Santal आ़रसी में आपका हार्दिक स्वागत है। यहाँ आप संताली, हिन्दी और अंग्रेज़ी भाषा पूरा पढ़कर सुन सकते हैं।', langMode: 'hindi' },
+    { label: 'English Johar', text: 'Johar! Welcome to the Santal आ़रसी digital linguistic platform for Santali language, English learning, and Jharkhand heritage.', langMode: 'english' },
+    { label: 'English Study Passage', text: 'Daily listening and reading in English improves pronunciation, comprehension, and confidence for UPSC, SSC, Banking, JPSC, and JSSC examinations.', langMode: 'english' },
+    { label: 'English Conversation', text: 'Good morning! How are you today? Let us practice clear English speaking and vocabulary together step by step.', langMode: 'english' }
   ];
 
-  const handleSpeak = (textToSpeak = inputText) => {
-    if (!textToSpeak.trim()) return;
+  const handleChangeLangMode = (mode: ReadingLanguageMode) => {
+    setReadingLanguageMode(mode);
+    setReadingLangModeState(mode);
+  };
 
-    setTestStatus(`पूरा पाठ "${voiceProfile.labelHi}" में पढ़ा जा रहा है...`);
+  const handleSpeak = (textToSpeak = inputText, modeOverride?: ReadingLanguageMode) => {
+    if (!textToSpeak.trim()) return;
+    const activeMode = modeOverride ?? readingLangMode;
+    const modeLabel =
+      activeMode === 'english'
+        ? 'English'
+        : activeMode === 'hindi'
+        ? 'हिन्दी'
+        : activeMode === 'santali_roman'
+        ? 'Santali Roman'
+        : '3-भाषा Auto';
+
+    setTestStatus(`पूरा पाठ "${voiceProfile.labelHi}" (${modeLabel}) में पढ़ा जा रहा है...`);
 
     speakWithFemaleVoice(textToSpeak, {
-      autoDetectLanguage: true,
+      autoDetectLanguage: activeMode === 'all',
+      readingLangMode: activeMode,
+      lang: activeMode === 'english' ? 'en-IN' : 'hi-IN',
       voiceProfileId: voiceProfile.id,
       rate: speechRate,
       pitch: speechPitch,
@@ -112,8 +181,14 @@ export const TextSpeakerReader: React.FC<{ compact?: boolean }> = ({ compact = f
   const handleHardwareTest = () => {
     playAcousticChime(659.25, 0.28);
     setTimeout(() => {
-      speakWithFemaleVoice(`ध्वनि परीक्षण सफल। ${voiceProfile.name} आवाज़ सक्रिय है।`, {
-        autoDetectLanguage: true,
+      const sample =
+        readingLangMode === 'english'
+          ? `Audio test successful. ${voiceProfile.name} English voice is active and ready.`
+          : `ध्वनि परीक्षण सफल। ${voiceProfile.name} आवाज़ सक्रिय है। English and Hindi reading ready.`;
+      speakWithFemaleVoice(sample, {
+        autoDetectLanguage: readingLangMode === 'all',
+        readingLangMode,
+        lang: readingLangMode === 'english' ? 'en-IN' : 'hi-IN',
         voiceProfileId: voiceProfile.id,
         rate: speechRate,
         pitch: speechPitch,
@@ -124,7 +199,67 @@ export const TextSpeakerReader: React.FC<{ compact?: boolean }> = ({ compact = f
     }, 280);
   };
 
-  const wordsPreview = inputText.trim().split(/\s+/).filter(Boolean);
+  const handleTrilingualFemaleTest = () => {
+    let activeFemale = voiceProfile;
+    if (voiceProfile.gender !== 'female') {
+      const bestFemale = TOP_10_VOICE_MODELS[0];
+      setActiveVoiceProfile(bestFemale.id);
+      setVoiceProfile(bestFemale);
+      setSpeechRate(bestFemale.rate);
+      setSpeechPitch(bestFemale.pitch);
+      activeFemale = bestFemale;
+    }
+    handleChangeLangMode('all');
+    const demoText =
+      'जोहार! संताली पारसी आ़डी नापाय काना, आबोन जोतो होड़ संताली बोन पढ़ावा। हिन्दी हमारी गौरवशाली भाषा है। And now I am reading clear, natural English smoothly for you.';
+    setInputText(demoText);
+    setTestStatus('शुद्ध त्रि-भाषी महिला वाचन (संताली + हिन्दी + English) चल रहा है...');
+    speakWithFemaleVoice(demoText, {
+      autoDetectLanguage: true,
+      readingLangMode: 'all',
+      lang: 'hi-IN',
+      voiceProfileId: activeFemale.id,
+      rate: activeFemale.rate,
+      pitch: activeFemale.pitch,
+      volume: 1.0,
+      onEnd: () => {
+        setTestStatus('3-भाषा शुद्ध महिला उच्चारण परीक्षण सफलतापूर्वक पूर्ण हुआ!');
+        setTimeout(() => setTestStatus(null), 4000);
+      }
+    });
+  };
+
+  const resolvedVoices = useMemo(
+    () => getResolvedTrilingualVoices(voiceProfile),
+    [voiceProfile, systemVoices, preferredHiVoice, preferredEnVoice]
+  );
+  const hindiCandidateVoices = useMemo(
+    () =>
+      systemVoices.filter(
+        (v) =>
+          v.lang.toLowerCase().startsWith('hi') ||
+          v.lang.toLowerCase().includes('-in') ||
+          /hindi|swara|kalpana|lekha|aditi|madhur|hemant/i.test(v.name)
+      ),
+    [systemVoices]
+  );
+  const englishCandidateVoices = useMemo(
+    () => systemVoices.filter((v) => v.lang.toLowerCase().startsWith('en')),
+    [systemVoices]
+  );
+
+  const wordsPreview = useMemo(
+    () => inputText.trim().split(/\s+/).filter(Boolean),
+    [inputText]
+  );
+  const devanagariPreview = useMemo(
+    () => (readingLangMode === 'english' || !inputText.trim() ? '' : toDevanagariAuto(inputText)),
+    [inputText, readingLangMode]
+  );
+  const olChikiPreview = useMemo(
+    () => (readingLangMode === 'english' || !inputText.trim() ? '' : toOlChikiAuto(inputText)),
+    [inputText, readingLangMode]
+  );
 
   return (
     <div className={`bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden font-sans ${compact ? 'p-3' : 'p-6 sm:p-7'} space-y-5`}>
@@ -138,11 +273,11 @@ export const TextSpeakerReader: React.FC<{ compact?: boolean }> = ({ compact = f
             <h2 className="text-base sm:text-lg font-bold text-slate-900 flex flex-wrap items-center gap-2">
               <span>सार्वभौमिक पाठ वाचक (Text Speaker &amp; Full Reader)</span>
               <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                पूरा पाठ व शब्द वाचन सक्रिय
+                Santali · Hindi · English
               </span>
             </h2>
             <p className="text-xs text-slate-500">
-              कोई भी संताली, हिन्दी या अंग्रेज़ी पाठ लिखें — केवल स्पीकर ध्वनि नहीं बल्कि हर शब्द पूरा पढ़कर सुनाया जाएगा।
+              कोई भी संताली, हिन्दी या English पाठ लिखें — हर शब्द स्पष्ट उच्चारण के साथ पूरा पढ़कर सुनाया जाएगा।
             </p>
           </div>
         </div>
@@ -168,11 +303,35 @@ export const TextSpeakerReader: React.FC<{ compact?: boolean }> = ({ compact = f
         </div>
       </div>
 
+      {/* Reading Language Selector (All / English / Hindi / Santali Roman) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+        <span className="font-bold text-slate-700 flex items-center gap-1.5">
+          <Languages className="w-4 h-4 text-sky-700 shrink-0" />
+          <span>वाचन भाषा चुनें (Reading Language):</span>
+        </span>
+        <div className="flex flex-wrap items-center gap-1">
+          {SPEAKER_LANG_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => handleChangeLangMode(opt.id)}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-colors cursor-pointer ${
+                readingLangMode === opt.id
+                  ? 'bg-sky-700 text-white shadow-2xs'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-sky-50'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Preset Phrases Strip */}
       <div className="space-y-1.5">
         <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
           <Sparkles className="w-3 h-3 text-amber-600" />
-          <span>त्वरित संताली व हिन्दी वाक्य (चुनते ही पूरा पढ़ें):</span>
+          <span>त्वरित संताली, हिन्दी व English वाक्य (चुनते ही पूरा पढ़ें):</span>
         </label>
         <div className="flex flex-wrap gap-1.5">
           {presets.map((p, idx) => (
@@ -180,7 +339,8 @@ export const TextSpeakerReader: React.FC<{ compact?: boolean }> = ({ compact = f
               key={idx}
               onClick={() => {
                 setInputText(p.text);
-                handleSpeak(p.text);
+                handleChangeLangMode(p.langMode);
+                handleSpeak(p.text, p.langMode);
               }}
               className="px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-amber-50 text-slate-700 hover:text-amber-900 border border-slate-200 hover:border-amber-400 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
             >
@@ -193,7 +353,7 @@ export const TextSpeakerReader: React.FC<{ compact?: boolean }> = ({ compact = f
       {/* Main Textarea Input */}
       <div className="relative space-y-2">
         <div className="flex items-center justify-between gap-2 text-xs">
-          <span className="font-bold text-slate-600">पाठ इनपुट (संताली देवनागरी / ओल चिकी / रोमन / हिन्दी):</span>
+          <span className="font-bold text-slate-600">पाठ इनपुट (English / हिन्दी / संताली देवनागरी / ओल चिकी / रोमन):</span>
           <button
             type="button"
             onClick={() => setInputText((prev) => toDevanagariAuto(prev))}
@@ -206,26 +366,33 @@ export const TextSpeakerReader: React.FC<{ compact?: boolean }> = ({ compact = f
           rows={compact ? 3 : 4}
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder="यहाँ कोई भी संताली देवनागरी, ओल चिकी, रोमन, हिन्दी या अंग्रेज़ी पाठ लिखें या पेस्ट करें..."
+          placeholder="यहाँ कोई भी English, हिन्दी या संताली (देवनागरी/ओल चिकी/रोमन) पाठ लिखें या पेस्ट करें..."
           className="w-full p-4 border border-slate-200 rounded-2xl text-sm sm:text-base font-serif font-medium text-slate-900 focus:ring-2 focus:ring-amber-500 focus:outline-none shadow-inner bg-[#FAFCFF]"
         />
 
-        {inputText.trim() && (
+        {inputText.trim() && readingLangMode === 'english' ? (
+          <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950 font-semibold">
+            <span className="text-[10px] font-bold uppercase text-emerald-800 block">
+              English Voice Mode Active (Natural English Pronunciation)
+            </span>
+            <p className="truncate">{inputText}</p>
+          </div>
+        ) : inputText.trim() ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <div className="p-2.5 rounded-xl bg-sky-50/70 border border-sky-200">
               <span className="text-[10px] font-bold uppercase text-sky-900 block">
                 संताली देवनागरी लिपि
               </span>
-              <p className="text-slate-900 font-semibold truncate">{toDevanagariAuto(inputText)}</p>
+              <p className="text-slate-900 font-semibold truncate">{devanagariPreview}</p>
             </div>
             <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200">
               <span className="text-[10px] font-bold uppercase text-amber-900 block">
                 ओल चिकी लिपि (ᱚᱞ ᱪᱤᱠᱤ)
               </span>
-              <p className="text-amber-950 font-semibold truncate">{toOlChikiAuto(inputText)}</p>
+              <p className="text-amber-950 font-semibold truncate">{olChikiPreview}</p>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Live Spoken Words Box — Shows the actual words being spoken */}
         {(isSpeaking || isPaused) && activeChunkText && (
@@ -307,6 +474,78 @@ export const TextSpeakerReader: React.FC<{ compact?: boolean }> = ({ compact = f
         </select>
       </div>
 
+      {/* Pure Trilingual Female Voice Pair Selector */}
+      <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-3 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="font-bold text-emerald-950 flex items-center gap-1.5">
+            <Volume2 className="w-4 h-4 text-emerald-700 shrink-0" />
+            <span>शुद्ध त्रि-भाषी महिला वाचक सेटअप (HI + Santali + English Auto-Switch)</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleTrilingualFemaleTest}
+            className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Play className="w-3.5 h-3.5 fill-white" />
+            <span>3-भाषा शुद्ध महिला टेस्ट सुनें</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <label className="space-y-1 block">
+            <span className="text-[11px] font-bold text-slate-700 block">
+              हिन्दी + संताली आवाज़ (Hindi &amp; Santali Voice):
+            </span>
+            <select
+              value={preferredHiVoice}
+              onChange={(e) => {
+                const val = e.target.value;
+                setPreferredHindiSantaliVoiceName(val);
+                setPreferredHiVoice(val);
+              }}
+              className="w-full px-2.5 py-1.5 rounded-xl border border-emerald-300 bg-white text-slate-900 font-semibold text-xs cursor-pointer"
+            >
+              <option value="">
+                ऑटो सर्वश्रेष्ठ ({resolvedVoices.hindiSantaliVoice?.name || 'System Hindi Voice'})
+              </option>
+              {(hindiCandidateVoices.length > 0 ? hindiCandidateVoices : systemVoices).map((v) => (
+                <option key={`hi-${v.name}-${v.lang}`} value={v.name}>
+                  {v.name} ({v.lang})
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1 block">
+            <span className="text-[11px] font-bold text-slate-700 block">
+              अंग्रेज़ी आवाज़ (English Voice):
+            </span>
+            <select
+              value={preferredEnVoice}
+              onChange={(e) => {
+                const val = e.target.value;
+                setPreferredEnglishVoiceName(val);
+                setPreferredEnVoice(val);
+              }}
+              className="w-full px-2.5 py-1.5 rounded-xl border border-emerald-300 bg-white text-slate-900 font-semibold text-xs cursor-pointer"
+            >
+              <option value="">
+                ऑटो सर्वश्रेष्ठ ({resolvedVoices.englishVoice?.name || 'System English Voice'})
+              </option>
+              {(englishCandidateVoices.length > 0 ? englishCandidateVoices : systemVoices).map((v) => (
+                <option key={`en-${v.name}-${v.lang}`} value={v.name}>
+                  {v.name} ({v.lang})
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <p className="text-[11px] text-emerald-900/90 leading-snug">
+          टिप: सर्वश्रेष्ठ प्राकृतिक महिला आवाज़ के लिए Microsoft Edge (Swara + Neerja Natural) या Chrome (Google हिन्दी) में यह ऑटोमैटिक चलता है।
+        </p>
+      </div>
+
       {/* Speed & Pitch Sliders */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs">
         <div>
@@ -320,7 +559,11 @@ export const TextSpeakerReader: React.FC<{ compact?: boolean }> = ({ compact = f
             max={1.3}
             step={0.05}
             value={speechRate}
-            onChange={(e) => setSpeechRate(Number(e.target.value))}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setSpeechRate(val);
+              setUserSpeechRate(val);
+            }}
             className="w-full accent-amber-600 cursor-pointer"
           />
           <div className="flex justify-between text-[10px] text-slate-400">
@@ -341,7 +584,11 @@ export const TextSpeakerReader: React.FC<{ compact?: boolean }> = ({ compact = f
             max={1.4}
             step={0.05}
             value={speechPitch}
-            onChange={(e) => setSpeechPitch(Number(e.target.value))}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setSpeechPitch(val);
+              setUserSpeechPitch(val);
+            }}
             className="w-full accent-amber-600 cursor-pointer"
           />
           <div className="flex justify-between text-[10px] text-slate-400">

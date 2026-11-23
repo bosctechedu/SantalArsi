@@ -1,7 +1,7 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
- * Hor Katha Suite — Offline IndexedDB Storage Layer
+ * Santal आ़रसी — Offline IndexedDB Storage Layer
  * Persists 10,000+ dictionary words, custom lexicon, and virtual keyboard drafts for offline use.
  */
 

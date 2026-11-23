@@ -1,5 +1,5 @@
 /**
- * Robust Multi-Voice Synthesis & 3-Language Audio Engine for Hor Katha Suite.
+ * Robust Multi-Voice Synthesis & 3-Language Audio Engine for Santal आ़रसी.
  * Features:
  * - True 3-Language Support: Hindi (Devanagari), English, and Santali Roman (plus Ol Chiki)
  * - Phonetic Santali Roman -> Devanagari acoustic bridge for authentic Santali-Indian pronunciation
@@ -25,56 +25,56 @@ export interface VoiceModelProfile {
 }
 
 export const TOP_10_VOICE_MODELS: VoiceModelProfile[] = [
-  // 5 Female Voice Models
+  // 5 Female Voice Models (Natural studio pitch — never shrill or distorted)
   {
     id: 'swara_female',
-    name: 'Swara (Standard Female)',
-    labelHi: '१. स्वरा (मधुर मानक महिला स्वर)',
+    name: 'Swara (Pure Trilingual Female — Best)',
+    labelHi: '१. स्वरा (सर्वश्रेष्ठ शुद्ध त्रि-भाषी महिला स्वर — HI+EN+Santali)',
     gender: 'female',
-    role: 'संतुलित व मधुर उच्चारण',
-    pitch: 1.12,
-    rate: 0.90,
-    voiceKeywords: ['swara', 'google हिन्दी', 'heera', 'kalpana', 'female', 'zira']
+    role: 'हिन्दी, अंग्रेज़ी और संताली तीनों का शुद्ध प्राकृतिक महिला वाचन',
+    pitch: 1.0,
+    rate: 0.92,
+    voiceKeywords: ['swara online', 'swara', 'google हिन्दी', 'hi-in-x-hia', 'hi-in-x-hic', 'neerja online', 'lekha', 'heera', 'kalpana', 'zira']
   },
   {
     id: 'aditi_teacher',
     name: 'Aditi (Clear Tutor Female)',
-    labelHi: '२. अदिति (स्पष्ट शिक्षिका स्वर)',
+    labelHi: '२. अदिति (स्पष्ट शिक्षिका महिला स्वर)',
     gender: 'female',
-    role: 'धीमा व शब्द-दर-शब्द शिक्षण',
-    pitch: 1.08,
-    rate: 0.78,
-    voiceKeywords: ['aditi', 'lekha', 'veena', 'sunita', 'geeta', 'female']
+    role: 'धीमा व शब्द-दर-शब्द शुद्ध व्याकरण शिक्षण',
+    pitch: 1.0,
+    rate: 0.82,
+    voiceKeywords: ['swara online', 'google हिन्दी', 'aditi', 'lekha', 'veena', 'isha', 'neerja online', 'heera', 'kalpana']
   },
   {
     id: 'kavya_storyteller',
     name: 'Kavya (Folk Storyteller Female)',
-    labelHi: '३. काव्या (लोककथा वाचिका)',
+    labelHi: '३. काव्या (सौम्य लोककथा वाचिका)',
     gender: 'female',
-    role: 'कहानी व सेरेञ भाव-वाचन',
-    pitch: 1.18,
-    rate: 0.85,
-    voiceKeywords: ['kavya', 'shruti', 'neerja', 'victoria', 'samantha', 'female']
+    role: 'कहानी, निबंध व सेरेञ भाव-वाचन',
+    pitch: 1.04,
+    rate: 0.87,
+    voiceKeywords: ['swara online', 'kavya', 'google हिन्दी', 'shruti', 'neerja online', 'samantha', 'victoria', 'heera']
   },
   {
     id: 'neerja_anchor',
     name: 'Neerja (News Anchor Female)',
-    labelHi: '४. नीरजा (समाचार वाचक महिला)',
+    labelHi: '४. नीरजा (समाचार वाचक महिला स्वर)',
     gender: 'female',
-    role: 'स्पष्ट व त्वरित बुलेटिन वाचन',
-    pitch: 1.04,
-    rate: 0.98,
-    voiceKeywords: ['neerja', 'natasha', 'karen', 'zira', 'heera', 'female']
+    role: 'स्पष्ट व त्वरित अंग्रेज़ी-हिन्दी बुलेटिन वाचन',
+    pitch: 0.99,
+    rate: 0.96,
+    voiceKeywords: ['neerja online', 'neerja', 'aria online', 'swara online', 'google uk english female', 'google हिन्दी', 'zira', 'heera']
   },
   {
     id: 'fulo_youth',
     name: 'Fulo (Bright Youth Female)',
-    labelHi: '५. फूलो (युवा संवाद स्वर)',
+    labelHi: '५. फूलो (जीवंत संवाद महिला स्वर)',
     gender: 'female',
-    role: 'संवादात्मक व जीवंत स्वर',
-    pitch: 1.24,
-    rate: 0.95,
-    voiceKeywords: ['samantha', 'victoria', 'swara', 'female']
+    role: 'संवादात्मक व सुस्पष्ट आधुनिक स्वर',
+    pitch: 1.06,
+    rate: 0.94,
+    voiceKeywords: ['aria online', 'jenny online', 'swara online', 'google हिन्दी', 'samantha', 'zira', 'heera']
   },
 
   // 5 Male Voice Models
@@ -132,7 +132,11 @@ export const TOP_10_VOICE_MODELS: VoiceModelProfile[] = [
 
 const VOICE_PROFILE_STORAGE_KEY = 'hor_katha_voice_profile';
 const CUSTOM_SYSTEM_VOICE_STORAGE_KEY = 'hor_katha_system_voice_name';
+const CUSTOM_HINDI_VOICE_STORAGE_KEY = 'hor_katha_hindi_santali_voice_name';
+const CUSTOM_ENGLISH_VOICE_STORAGE_KEY = 'hor_katha_english_voice_name';
 const READING_LANG_MODE_STORAGE_KEY = 'hor_katha_reading_lang_mode';
+const USER_SPEECH_RATE_STORAGE_KEY = 'hor_katha_speech_rate';
+const USER_SPEECH_PITCH_STORAGE_KEY = 'hor_katha_speech_pitch';
 
 export function getReadingLanguageMode(): ReadingLanguageMode {
   if (typeof window === 'undefined') return 'all';
@@ -171,8 +175,64 @@ export function getActiveVoiceProfile(): VoiceModelProfile {
 export function setActiveVoiceProfile(profileId: string) {
   if (typeof window === 'undefined') return;
   try {
+    unreliableVoiceNames.clear();
     localStorage.setItem(VOICE_PROFILE_STORAGE_KEY, profileId);
+    const chosen = TOP_10_VOICE_MODELS.find((v) => v.id === profileId);
+    if (chosen) {
+      localStorage.setItem(USER_SPEECH_RATE_STORAGE_KEY, String(chosen.rate));
+      localStorage.setItem(USER_SPEECH_PITCH_STORAGE_KEY, String(chosen.pitch));
+    }
     window.dispatchEvent(new CustomEvent('hor-katha-voice-changed', { detail: profileId }));
+  } catch {
+    // ignore
+  }
+}
+
+export function getUserSpeechRate(): number {
+  const fallback = getActiveVoiceProfile().rate;
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = localStorage.getItem(USER_SPEECH_RATE_STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 0.55 || parsed > 1.6) return fallback;
+    return parsed;
+  } catch {
+    return fallback;
+  }
+}
+
+export function setUserSpeechRate(rate: number) {
+  if (typeof window === 'undefined') return;
+  const clamped = Math.max(0.6, Math.min(1.5, Number(rate.toFixed(2))));
+  try {
+    localStorage.setItem(USER_SPEECH_RATE_STORAGE_KEY, String(clamped));
+    window.dispatchEvent(new CustomEvent('hor-katha-voice-changed', { detail: { rate: clamped } }));
+  } catch {
+    // ignore
+  }
+}
+
+export function getUserSpeechPitch(): number {
+  const fallback = getActiveVoiceProfile().pitch;
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = localStorage.getItem(USER_SPEECH_PITCH_STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 0.6 || parsed > 1.5) return fallback;
+    return parsed;
+  } catch {
+    return fallback;
+  }
+}
+
+export function setUserSpeechPitch(pitch: number) {
+  if (typeof window === 'undefined') return;
+  const clamped = Math.max(0.65, Math.min(1.4, Number(pitch.toFixed(2))));
+  try {
+    localStorage.setItem(USER_SPEECH_PITCH_STORAGE_KEY, String(clamped));
+    window.dispatchEvent(new CustomEvent('hor-katha-voice-changed', { detail: { pitch: clamped } }));
   } catch {
     // ignore
   }
@@ -185,15 +245,43 @@ export function getPreferredSystemVoiceName(): string {
 
 export function setPreferredSystemVoiceName(name: string) {
   if (typeof window === 'undefined') return;
+  unreliableVoiceNames.clear();
   if (!name) localStorage.removeItem(CUSTOM_SYSTEM_VOICE_STORAGE_KEY);
   else localStorage.setItem(CUSTOM_SYSTEM_VOICE_STORAGE_KEY, name);
+  window.dispatchEvent(new CustomEvent('hor-katha-voice-changed', { detail: name }));
+}
+
+export function getPreferredHindiSantaliVoiceName(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(CUSTOM_HINDI_VOICE_STORAGE_KEY) || '';
+}
+
+export function setPreferredHindiSantaliVoiceName(name: string) {
+  if (typeof window === 'undefined') return;
+  unreliableVoiceNames.clear();
+  if (!name) localStorage.removeItem(CUSTOM_HINDI_VOICE_STORAGE_KEY);
+  else localStorage.setItem(CUSTOM_HINDI_VOICE_STORAGE_KEY, name);
+  window.dispatchEvent(new CustomEvent('hor-katha-voice-changed', { detail: name }));
+}
+
+export function getPreferredEnglishVoiceName(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(CUSTOM_ENGLISH_VOICE_STORAGE_KEY) || '';
+}
+
+export function setPreferredEnglishVoiceName(name: string) {
+  if (typeof window === 'undefined') return;
+  unreliableVoiceNames.clear();
+  if (!name) localStorage.removeItem(CUSTOM_ENGLISH_VOICE_STORAGE_KEY);
+  else localStorage.setItem(CUSTOM_ENGLISH_VOICE_STORAGE_KEY, name);
   window.dispatchEvent(new CustomEvent('hor-katha-voice-changed', { detail: name }));
 }
 
 export function getAvailableSystemVoices(): SpeechSynthesisVoice[] {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
   const list = window.speechSynthesis.getVoices();
-  return list.length > 0 ? list : cachedVoices;
+  if (list && list.length > 0) cachedVoices = list;
+  return cachedVoices;
 }
 
 export interface SpeechStateSnapshot {
@@ -204,6 +292,7 @@ export interface SpeechStateSnapshot {
   chunkIndex: number;
   totalChunks: number;
   activeVoiceName?: string;
+  activeSystemVoiceName?: string;
   activeChunkLang?: DetectedChunkLang;
   errorMessage?: string | null;
 }
@@ -218,6 +307,7 @@ let currentSpeechState: SpeechStateSnapshot = {
   chunkIndex: 0,
   totalChunks: 0,
   activeVoiceName: TOP_10_VOICE_MODELS[0].labelHi,
+  activeSystemVoiceName: '',
   activeChunkLang: 'hindi',
   errorMessage: null
 };
@@ -247,25 +337,57 @@ export function subscribeSpeechState(listener: SpeechStateListener): () => void 
   };
 }
 
-// Ol Chiki (᱐-᱿) phonetic Devanagari transliterator so Ol Chiki scripts are spoken aloud!
-const OL_CHIKI_TO_DEV: Record<string, string> = {
+// Syllabic Ol Chiki (᱐-᱿) -> Devanagari transliterator so Ol Chiki reads as smooth natural words (not letter-by-letter!)
+const OL_CHIKI_VOWELS: Record<string, [string, string]> = {
+  'ᱚ': ['अ', ''],
+  'ᱟ': ['आ', 'ा'],
+  'ᱤ': ['इ', 'ि'],
+  'ᱩ': ['उ', 'ु'],
+  'ᱮ': ['ए', 'े'],
+  'ᱳ': ['ओ', 'ो']
+};
+
+const OL_CHIKI_CONSONANTS: Record<string, string> = {
+  'ᱛ': 'त', 'ᱜ': 'ग', 'ᱝ': 'ंग', 'ᱞ': 'ल',
+  'ᱠ': 'क', 'ᱡ': 'ज', 'ᱢ': 'म', 'ᱣ': 'व',
+  'ᱥ': 'स', 'ᱦ': 'ह', 'ᱧ': 'ंय', 'ᱨ': 'र',
+  'ᱪ': 'च', 'ᱫ': 'द', 'ᱬ': 'ण', 'ᱭ': 'य',
+  'ᱯ': 'प', 'ᱰ': 'ड', 'ᱱ': 'न', 'ᱲ': 'ड़',
+  'ᱴ': 'ट', 'ᱵ': 'ब', 'ᱶ': 'ँ', 'ᱷ': 'ह'
+};
+
+const OL_CHIKI_DIGITS_AND_MARKS: Record<string, string> = {
   '᱐': '0', '᱑': '1', '᱒': '2', '᱓': '3', '᱔': '4',
   '᱕': '5', '᱖': '6', '᱗': '7', '᱘': '8', '᱙': '9',
-  'ᱚ': 'अ', 'ᱛ': 'त', 'ᱜ': 'ग', 'ᱝ': 'ङ', 'ᱞ': 'ल',
-  'ᱟ': 'आ', 'क': 'क', 'ᱡ': 'ज', 'ᱢ': 'म', 'ᱣ': 'व',
-  'ᱠ': 'क',
-  'ᱤ': 'इ', 'ᱥ': 'स', 'ᱦ': 'ह', 'ᱧ': 'ञ', 'ᱨ': 'र',
-  'ᱩ': 'उ', 'ᱪ': 'च', 'ᱫ': 'द', 'ᱬ': 'ण', 'ᱭ': 'य',
-  'ᱮ': 'ए', 'ᱯ': 'प', 'ᱰ': 'ड', 'ᱱ': 'न', 'ᱲ': 'ड़',
-  'ᱳ': 'ओ', 'ᱴ': 'ट', 'ᱵ': 'ब', 'ᱶ': 'ँ', 'ᱷ': 'ह',
-  'ᱸ': 'ं', 'ᱹ': '़', 'ᱺ': 'ं', 'ᱻ': '', 'ᱼ': '', 'ᱽ': '्', '᱾': '।', '᱿': '।'
+  'ᱸ': 'ं', 'ᱹ': '', 'ᱺ': 'ं', 'ᱻ': '', 'ᱼ': '', 'ᱽ': '्', '᱾': '।', '᱿': '।'
 };
 
 export function transliterateOlChikiIfPresent(input: string): string {
   if (!/[\u1C50-\u1C7F]/.test(input)) return input;
+  const chars = Array.from(input);
   let out = '';
-  for (const ch of input) {
-    out += OL_CHIKI_TO_DEV[ch] !== undefined ? OL_CHIKI_TO_DEV[ch] : ch;
+  let prevWasConsonant = false;
+
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (OL_CHIKI_VOWELS[ch]) {
+      const [indep, matra] = OL_CHIKI_VOWELS[ch];
+      out += prevWasConsonant ? matra : indep;
+      prevWasConsonant = false;
+      continue;
+    }
+    if (OL_CHIKI_CONSONANTS[ch]) {
+      out += OL_CHIKI_CONSONANTS[ch];
+      prevWasConsonant = ch !== 'ᱝ' && ch !== 'ᱧ' && ch !== 'ᱶ';
+      continue;
+    }
+    if (OL_CHIKI_DIGITS_AND_MARKS[ch] !== undefined) {
+      out += OL_CHIKI_DIGITS_AND_MARKS[ch];
+      if (ch === '᱾' || ch === '᱿' || ch === 'ᱽ') prevWasConsonant = false;
+      continue;
+    }
+    out += ch;
+    prevWasConsonant = false;
   }
   return out;
 }
@@ -437,7 +559,70 @@ const SANTALI_ROMAN_LEXICON_PHONETIC: Record<string, string> = {
   da: 'दाः',
   jondra: 'जोंडरा',
   huru: 'हूड़ू',
-  caole: 'चावले'
+  caole: 'चावले',
+  chawle: 'चावले',
+  parsi: 'पारसी',
+  ronor: 'रोनौड़',
+  onol: 'ओनोल',
+  kudum: 'कुदुम',
+  nutum: 'ञुतुम',
+  janang: 'जानांग',
+  gotang: 'गोटांग',
+  okte: 'ओकते',
+  menkhan: 'मेनखान',
+  chedaq: 'चेदाक',
+  onate: 'ओनाते',
+  napay: 'नापाय',
+  sibil: 'सिबिल',
+  hudin: 'हुडिंय',
+  gidra: 'गिदरा',
+  gidrako: 'गिदराको',
+  iskul: 'इस्कूल',
+  parhaw: 'पढ़ाव',
+  chalaq: 'चलाक',
+  hijuq: 'हिजुक',
+  sena: 'सेना',
+  menaq: 'मेनाक',
+  banuq: 'बानुक',
+  ere: 'एड़े',
+  nawa: 'नावा',
+  mare: 'मारे',
+  lolo: 'लोलो',
+  reyar: 'रेयाड़',
+  sangin: 'सांगिंय',
+  nonde: 'नोंडे',
+  honde: 'होंडे',
+  dinom: 'दिनोम',
+  nitoq: 'नितोक',
+  keda: 'केदा',
+  ena: 'एना',
+  kanay: 'कानाय',
+  kanakin: 'कानाकिन',
+  kanako: 'कानाको',
+  abon: 'आबोन',
+  aben: 'आबेन',
+  unkin: 'उनकिन',
+  unku: 'उनकु',
+  uni: 'उनी',
+  nowa: 'नोवा',
+  ona: 'ओना',
+  sarjom: 'सारजोम',
+  matkom: 'मातकोम',
+  sechet: 'सेचेत',
+  dular: 'दुलाड़',
+  raska: 'रास्का',
+  arsi: 'आरसी',
+  horko: 'होड़को',
+  horkin: 'होड़किन',
+  daka_utu: 'दाका उतु',
+  chithi: 'चिठी',
+  nehor: 'नेहोर',
+  mahit: 'माहित',
+  sakam: 'साकाम',
+  singi: 'सिंगि',
+  ipil: 'इपिल',
+  gada: 'गाडा',
+  bajar: 'बाजार'
 };
 
 const SANTALI_ROMAN_WORD_SET = new Set(Object.keys(SANTALI_ROMAN_LEXICON_PHONETIC));
@@ -715,6 +900,47 @@ export function transliterateDevanagariToPhoneticRoman(input: string): string {
   });
 }
 
+/**
+ * Normalizes Santali Devanagari special orthography ONLY for speech synthesis playback
+ * so Hindi/Indian neural female voices (Swara, Google हिन्दी, Lekha) read Santali words
+ * smoothly & authentically without stuttering on vowel nuktas, glottal apostrophes, or final ञ/ङ.
+ */
+export function normalizeSantaliDevanagariForPureTTS(text: string): string {
+  if (!/[\u0900-\u097F]/.test(text)) return text;
+  return text
+    // 1. Strip Santali vowel nukta (आ़, अ़, ा़, े़, ो़, ि़, ु़) which breaks standard Hindi TTS
+    .replace(/([अआइईउऊएऐओऔािीुूेैोौ])़/g, '$1')
+    // 2. Smooth Santali hyphenated verb/suffix joins (केत्-आ -> केता, मेनाक्-आ -> मेनाका, चलाक्आ -> चलाका)
+    .replace(/क्['’]?-आ/g, 'का')
+    .replace(/क्आ/g, 'का')
+    .replace(/त्['’]?-आ/g, 'ता')
+    .replace(/त्आ/g, 'ता')
+    .replace(/च्['’]?-आ/g, 'चा')
+    .replace(/प्['’]?-आ/g, 'पा')
+    // 3. Smooth Santali checked-consonant apostrophes (दाक्' -> दाक, मित्' -> मित, दुड़ुप्' -> दुड़ुप, एनेच्' -> एनेच)
+    .replace(/क्['’]/g, 'क')
+    .replace(/च्['’]/g, 'च')
+    .replace(/त्['’]/g, 'त')
+    .replace(/प्['’]/g, 'प')
+    .replace(/([\u0900-\u097F])['’]/g, '$1')
+    // 4. Smooth standalone velar/palatal nasals (ङ -> ंग, word-final/medial ञ -> ंय) for crisp Indian female pronunciation
+    .replace(/([\u0900-\u097F])ङ(?![\u093E-\u094D])/g, '$1ंग')
+    .replace(/इञाक्/g, 'इंयाक')
+    .replace(/इञाक/g, 'इंयाक')
+    .replace(/इञिच्/g, 'इंयिच')
+    .replace(/इञ/g, 'इंय')
+    .replace(/आलिञ/g, 'आलिंय')
+    .replace(/तेहेञ/g, 'तेहेंय')
+    .replace(/सेरेञ/g, 'सेरेंग')
+    .replace(/हुडिञ/g, 'हुडिंय')
+    .replace(/सांगिञ/g, 'सांगिंय')
+    .replace(/([\u0900-\u097F])ञ(?![\u093E-\u094D])/g, '$1ंय')
+    // 5. Remove trailing bare halant on Santali final checked stops so TTS doesn't swallow the last syllable
+    .replace(/([कचतप])्(?=\s|[।.,?!;:]|$)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Santali Devanagari / Multi-Script phonetic text formatter
 export function formatSpeechText(input: string): string {
   if (!input) return '';
@@ -742,7 +968,7 @@ export function classifyChunkLanguage(
   if (devChars === 0 && latinChars > 0) {
     return isRomanSantaliChunk(chunk) ? 'santali_roman' : 'english';
   }
-  if (latinChars > devChars * 2.2 && latinChars > 5) {
+  if (latinChars > devChars * 1.8 && latinChars >= 3) {
     return isRomanSantaliChunk(chunk) ? 'santali_roman' : 'english';
   }
   return 'hindi';
@@ -760,6 +986,43 @@ export function detectChunkLang(chunk: string, fallbackLang = 'hi-IN'): string {
 
 function hasSpeakableContent(text: string): boolean {
   return /[A-Za-z0-9\u0900-\u097F\u1C50-\u1C7F]/.test(text);
+}
+
+/**
+ * Splits a single mixed-script sentence into consecutive script-homogeneous micro-segments
+ * so a single sentence mixing Hindi/Santali + English (e.g. "जोहार! Welcome to Santal आ़रसी")
+ * routes Hindi/Santali spans to the pure Hindi Female Voice and English spans to the pure English Female Voice!
+ */
+export function splitMixedScriptSentence(sentence: string): string[] {
+  const hasDev = /[\u0900-\u097F]/.test(sentence);
+  const hasLatin = /[A-Za-z]{2,}/.test(sentence);
+  if (!hasDev || !hasLatin) return [sentence];
+
+  const tokens = sentence.split(/\s+/).filter(Boolean);
+  const segments: Array<{ script: 'dev' | 'lat'; parts: string[] }> = [];
+
+  for (const tok of tokens) {
+    const tokHasDev = /[\u0900-\u097F]/.test(tok);
+    const tokHasLat = /[A-Za-z]/.test(tok);
+    const script: 'dev' | 'lat' = tokHasDev
+      ? 'dev'
+      : tokHasLat
+      ? 'lat'
+      : segments.length > 0
+      ? segments[segments.length - 1].script
+      : 'dev';
+
+    const last = segments[segments.length - 1];
+    if (last && last.script === script) {
+      last.parts.push(tok);
+    } else {
+      segments.push({ script, parts: [tok] });
+    }
+  }
+
+  return segments
+    .map((s) => s.parts.join(' ').trim())
+    .filter((s) => s.length > 0 && hasSpeakableContent(s));
 }
 
 /**
@@ -882,9 +1145,105 @@ function isVoiceUsableNow(v: SpeechSynthesisVoice): boolean {
   return true;
 }
 
+const KNOWN_MALE_VOICE_RE =
+  /\b(male|hemant|madhur|prabhat|ravi|david|mark|george|daniel|alex|guy|rishabh|ryan|christopher|eric|andrew|brian|roger|steffan|liam|connor|william|james|aaron|fred)\b|hi-in-x-(?:hib|hid)|en-in-x-(?:end|ene)|en-us-x-(?:tpd|iom|iol)|en-gb-x-(?:gbb|gbd)/i;
+
+const KNOWN_FEMALE_VOICE_RE =
+  /\b(female|swara|neerja|heera|kalpana|aditi|kavya|lekha|veena|isha|shruti|sunita|geeta|zira|aria|jenny|sonia|samantha|victoria|karen|natasha|ava|emma|michelle|libby|maisie|hazel|susan|moira|tessa|fiona|veena)\b|google हिन्दी|google us english|hi-in-x-(?:hia|hic|hie)|en-in-x-(?:ena|enc)|en-us-x-(?:sfg|tpf|iob|iog)|en-gb-x-(?:gba|gbc|rjs)/i;
+
+function scoreVoiceQuality(
+  v: SpeechSynthesisVoice,
+  isEnglishTarget: boolean,
+  profile: VoiceModelProfile
+): number {
+  const name = v.name.toLowerCase();
+  const lang = v.lang.toLowerCase();
+  const isOnline = typeof navigator === 'undefined' ? true : navigator.onLine !== false;
+  let score = 0;
+
+  // 1. Strict Gender Accuracy (never pick a male voice for a female reader!)
+  const looksMale = KNOWN_MALE_VOICE_RE.test(name);
+  const looksFemale = KNOWN_FEMALE_VOICE_RE.test(name);
+
+  if (profile.gender === 'female') {
+    if (looksMale && !looksFemale) score -= 2200;
+    if (looksFemale) score += 320;
+  } else {
+    if (looksFemale && !looksMale) score -= 2200;
+    if (looksMale) score += 320;
+  }
+
+  // 2. Language Accuracy + Studio Neural Quality Ranking
+  if (!isEnglishTarget) {
+    // Target: Hindi + Santali (Devanagari / Phonetic)
+    if (lang.startsWith('hi')) {
+      score += 650;
+      if (profile.gender === 'female') {
+        if (name.includes('swara') && name.includes('natural')) score += 520;
+        else if (name.includes('swara')) score += 450;
+        else if (name.includes('google') && (name.includes('हिन्दी') || name.includes('hindi') || lang.startsWith('hi'))) score += 470;
+        else if (/hi-in-x-(?:hia|hic|hie)/i.test(name)) score += 430;
+        else if (name.includes('lekha')) score += 390;
+        else if (name.includes('kalpana') || name.includes('aditi')) score += 290;
+      } else {
+        if (name.includes('madhur') && name.includes('natural')) score += 520;
+        else if (name.includes('madhur')) score += 440;
+        else if (name.includes('hemant')) score += 300;
+      }
+    } else if (lang.includes('-in')) {
+      // Indian English fallback when device lacks Hindi voice
+      score += 180;
+    } else if (lang.startsWith('en')) {
+      score += 60;
+    } else {
+      score -= 400;
+    }
+  } else {
+    // Target: English (Natural Indian English Female preferred, then UK/US Neural Female)
+    if (lang.includes('en-in')) {
+      score += 620;
+      if (profile.gender === 'female') {
+        if (name.includes('neerja') && name.includes('natural')) score += 520;
+        else if (name.includes('neerja')) score += 440;
+        else if (/en-in-x-(?:ena|enc)/i.test(name)) score += 420;
+        else if (name.includes('veena') || name.includes('isha')) score += 390;
+        else if (name.includes('heera')) score += 340;
+      } else {
+        if (name.includes('prabhat') && name.includes('natural')) score += 500;
+        else if (name.includes('ravi')) score += 320;
+      }
+    } else if (lang.startsWith('en-gb') || lang.startsWith('en-us') || lang.startsWith('en')) {
+      score += 520;
+      if (profile.gender === 'female') {
+        if ((name.includes('aria') || name.includes('jenny') || name.includes('sonia') || name.includes('ava')) && name.includes('natural')) {
+          score += 470;
+        } else if (name.includes('google uk english female') || name.includes('google us english')) {
+          score += 440;
+        } else if (name.includes('samantha') || name.includes('karen') || name.includes('zira')) {
+          score += 310;
+        }
+      }
+    } else {
+      score -= 400;
+    }
+  }
+
+  // 3. Natural / Neural bonus when online
+  if (isOnline && (name.includes('natural') || name.includes('neural') || name.includes('online'))) {
+    score += 140;
+  }
+
+  // 4. Profile keyword affinity bonus
+  if (profile.voiceKeywords.some((k) => name.includes(k))) {
+    score += 90;
+  }
+
+  return score;
+}
+
 /**
- * Selects the best browser SpeechSynthesisVoice matching the requested language
- * AND the user's selected Male/Female Top-10 voice profile (or explicit system voice).
+ * Selects the highest-quality SpeechSynthesisVoice matching the requested language
+ * AND the user's selected Male/Female profile (or explicit per-language pinned system voice).
  */
 export function getVoiceForProfile(
   preferredLang = 'hi-IN',
@@ -902,88 +1261,53 @@ export function getVoiceForProfile(
   const voices = usable.length > 0 ? usable : allVoices.filter((v) => !unreliableVoiceNames.has(v.name));
   const pool = voices.length > 0 ? voices : allVoices;
 
-  // 0. Explicit user-pinned OS voice if not marked broken
-  const customSysName = getPreferredSystemVoiceName();
-  if (customSysName && !preferLocalOnly) {
-    const pinned = pool.find((v) => v.name === customSysName);
-    if (pinned) return pinned;
-  }
-
   const isEnglish = preferredLang.toLowerCase().startsWith('en');
-  const genderKeywords =
-    profile.gender === 'male'
-      ? ['male', 'madhur', 'hemant', 'prabhat', 'ravi', 'david', 'george', 'daniel', 'mark', 'alex', 'guy', 'rishabh']
-      : ['female', 'swara', 'kavya', 'heera', 'kalpana', 'zira', 'aditi', 'veena', 'sunita', 'geeta', 'shruti', 'neerja', 'samantha', 'victoria', 'karen', 'natasha', 'lekha'];
 
-  if (!isEnglish) {
-    // Prefer genuine Hindi voices (local OS Hindi first, then remote Hindi)
-    const localHiExact = pool.find(
-      (v) =>
-        v.localService &&
-        v.lang.toLowerCase().startsWith('hi') &&
-        profile.voiceKeywords.some((k) => v.name.toLowerCase().includes(k))
-    );
-    if (localHiExact) return localHiExact;
-
-    const localHiGender = pool.find(
-      (v) =>
-        v.localService &&
-        v.lang.toLowerCase().startsWith('hi') &&
-        genderKeywords.some((k) => v.name.toLowerCase().includes(k))
-    );
-    if (localHiGender) return localHiGender;
-
-    const localAnyHi = pool.find((v) => v.localService && v.lang.toLowerCase().startsWith('hi'));
-    if (localAnyHi) return localAnyHi;
-
-    const hiExact = pool.find(
-      (v) =>
-        v.lang.toLowerCase().startsWith('hi') &&
-        profile.voiceKeywords.some((k) => v.name.toLowerCase().includes(k))
-    );
-    if (hiExact) return hiExact;
-
-    const anyHindi = pool.find((v) => v.lang.toLowerCase().startsWith('hi'));
-    if (anyHindi) return anyHindi;
-
-    // Fallback to Indian English local voice, then any local voice
-    const inGender = pool.find(
-      (v) =>
-        v.lang.toLowerCase().includes('-in') &&
-        genderKeywords.some((k) => v.name.toLowerCase().includes(k))
-    );
-    if (inGender) return inGender;
-
-    const indianAny = pool.find((v) => v.lang.toLowerCase().includes('-in'));
-    if (indianAny) return indianAny;
-  } else {
-    const enInGender = pool.find(
-      (v) =>
-        v.lang.toLowerCase().includes('en-in') &&
-        genderKeywords.some((k) => v.name.toLowerCase().includes(k))
-    );
-    if (enInGender) return enInGender;
-
-    const enInAny = pool.find((v) => v.lang.toLowerCase().includes('en-in'));
-    if (enInAny) return enInAny;
-
-    const enGender = pool.find(
-      (v) =>
-        v.lang.toLowerCase().startsWith('en') &&
-        genderKeywords.some((k) => v.name.toLowerCase().includes(k))
-    );
-    if (enGender) return enGender;
-
-    const anyEn = pool.find((v) => v.lang.toLowerCase().startsWith('en'));
-    if (anyEn) return anyEn;
+  // 0. Per-language explicit user-pinned voice (best for pure Hindi+Santali & English dual female setup)
+  if (!preferLocalOnly) {
+    const pinnedLangVoice = isEnglish ? getPreferredEnglishVoiceName() : getPreferredHindiSantaliVoiceName();
+    if (pinnedLangVoice) {
+      const found = pool.find((v) => v.name === pinnedLangVoice);
+      if (found) return found;
+    }
+    const customSysName = getPreferredSystemVoiceName();
+    if (customSysName) {
+      const pinned = pool.find((v) => v.name === customSysName);
+      if (pinned) {
+        const pinnedIsEn = pinned.lang.toLowerCase().startsWith('en');
+        const pinnedIsHi = pinned.lang.toLowerCase().startsWith('hi');
+        if ((isEnglish && pinnedIsEn) || (!isEnglish && pinnedIsHi)) {
+          return pinned;
+        }
+      }
+    }
   }
 
-  const anyGender = pool.find((v) =>
-    genderKeywords.some((k) => v.name.toLowerCase().includes(k))
-  );
-  if (anyGender) return anyGender;
+  // Deterministic tie-breaking by alphabetical voice name so the same voice stays locked across chunks & reloads
+  const sortedPool = [...pool].sort((a, b) => a.name.localeCompare(b.name));
+  let best: SpeechSynthesisVoice | null = null;
+  let bestScore = -Infinity;
+  for (const v of sortedPool) {
+    const s = scoreVoiceQuality(v, isEnglish, profile);
+    if (s > bestScore) {
+      bestScore = s;
+      best = v;
+    }
+  }
+  return best || sortedPool.find((v) => v.localService) || sortedPool[0] || null;
+}
 
-  return pool.find((v) => v.localService) || pool[0] || null;
+/**
+ * Returns the live resolved voice pair (Hindi+Santali voice + English voice) for UI transparency.
+ */
+export function getResolvedTrilingualVoices(profile: VoiceModelProfile = getActiveVoiceProfile()): {
+  hindiSantaliVoice: SpeechSynthesisVoice | null;
+  englishVoice: SpeechSynthesisVoice | null;
+} {
+  return {
+    hindiSantaliVoice: getVoiceForProfile('hi-IN', profile, false),
+    englishVoice: getVoiceForProfile('en-IN', profile, false)
+  };
 }
 
 export function getImmediateFemaleVoice(preferredLang = 'hi-IN'): SpeechSynthesisVoice | null {
@@ -1057,28 +1381,54 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
     ? TOP_10_VOICE_MODELS.find((v) => v.id === options.voiceProfileId) || getActiveVoiceProfile()
     : getActiveVoiceProfile();
 
-  const effectiveMode: ReadingLanguageMode = options?.readingLangMode ?? getReadingLanguageMode();
+  // Content modules that do NOT pass readingLangMode explicitly always read in full 3-language Auto mode
+  // so no card/lesson sentence is ever silently skipped when the global reader bar filter is set to a single language.
+  const effectiveMode: ReadingLanguageMode = options?.readingLangMode ?? 'all';
 
-  // When a specific language filter is requested, split mixed-language clauses finely first
-  let chunks = splitIntoSpeechChunks(cleaned, 145, effectiveMode !== 'all');
+  let parentChunks = splitIntoSpeechChunks(cleaned, 145, effectiveMode !== 'all');
 
-  if (effectiveMode !== 'all' && chunks.length > 1) {
-    const filtered = chunks.filter((c) => {
+  if (effectiveMode !== 'all' && parentChunks.length > 1) {
+    const filtered = parentChunks.filter((c) => {
       const kind = classifyChunkLanguage(c, effectiveMode);
       return kind === effectiveMode;
     });
     if (filtered.length > 0) {
-      chunks = filtered;
+      parentChunks = filtered;
     } else {
-      // Fallback to standard chunks if filter leaves empty
-      chunks = splitIntoSpeechChunks(cleaned, 145, false);
+      parentChunks = splitIntoSpeechChunks(cleaned, 145, false);
     }
   }
 
-  if (chunks.length === 0) return;
+  if (parentChunks.length === 0) return;
 
-  const startIdx = Math.max(0, Math.min(options?.startChunkIndex ?? 0, chunks.length - 1));
-  activeSessionMeta = { text, chunks, chunkIndex: startIdx, options };
+  // Map each spoken micro-segment back to its exact parent sentence chunk so karaoke highlighting,
+  // progress counts, and < Prev / Next > controls stay 100% synchronized even when intra-sentence switching happens!
+  interface SpeechSegment {
+    spokenRaw: string;
+    parentIdx: number;
+    parentText: string;
+  }
+
+  const segments: SpeechSegment[] = [];
+  parentChunks.forEach((pText, pIdx) => {
+    if (effectiveMode === 'all' && options?.autoDetectLanguage !== false) {
+      const microParts = splitMixedScriptSentence(pText);
+      for (const part of microParts) {
+        segments.push({ spokenRaw: part, parentIdx: pIdx, parentText: pText });
+      }
+    } else {
+      segments.push({ spokenRaw: pText, parentIdx: pIdx, parentText: pText });
+    }
+  });
+
+  if (segments.length === 0) return;
+
+  const requestedParentIdx = Math.max(0, Math.min(options?.startChunkIndex ?? 0, parentChunks.length - 1));
+  const startSegIdx = Math.max(
+    0,
+    segments.findIndex((s) => s.parentIdx >= requestedParentIdx)
+  );
+  activeSessionMeta = { text, chunks: parentChunks, chunkIndex: requestedParentIdx, options };
 
   if (!('speechSynthesis' in window)) {
     playAcousticChime(659.25, 0.35);
@@ -1088,8 +1438,9 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
       fullText: cleaned,
       currentChunkText: cleaned,
       chunkIndex: 0,
-      totalChunks: chunks.length,
+      totalChunks: parentChunks.length,
       activeVoiceName: activeProfile.labelHi,
+      activeSystemVoiceName: '',
       activeChunkLang: classifyChunkLanguage(cleaned, effectiveMode),
       errorMessage: 'आपका ब्राउज़र Web Speech Audio का समर्थन नहीं करता।'
     });
@@ -1110,14 +1461,15 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
     }
   }
 
-  const initialLang = classifyChunkLanguage(chunks[startIdx] || cleaned, effectiveMode);
+  const initialSeg = segments[startSegIdx] || segments[0];
+  const initialLang = classifyChunkLanguage(initialSeg.spokenRaw, effectiveMode);
   emitSpeechState({
     isSpeaking: true,
     isPaused: false,
     fullText: cleaned,
-    currentChunkText: chunks[startIdx] || cleaned,
-    chunkIndex: startIdx,
-    totalChunks: chunks.length,
+    currentChunkText: initialSeg.parentText,
+    chunkIndex: initialSeg.parentIdx,
+    totalChunks: parentChunks.length,
     activeVoiceName: activeProfile.labelHi,
     activeChunkLang: initialLang,
     errorMessage: null
@@ -1139,15 +1491,16 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
   }, 2500);
 
   let consecutiveErrors = 0;
+  let lastReportedParentIdx = -1;
 
-  const speakChunk = (idx: number, attemptMode: 'primary' | 'local_fallback' | 'roman_fallback' = 'primary') => {
+  const speakSegment = (segIdx: number, attemptMode: 'primary' | 'local_fallback' | 'roman_fallback' = 'primary') => {
     if (sessionId !== speechSessionId) return;
 
-    while (idx < chunks.length && !hasSpeakableContent(chunks[idx])) {
-      idx++;
+    while (segIdx < segments.length && !hasSpeakableContent(segments[segIdx].spokenRaw)) {
+      segIdx++;
     }
 
-    if (idx >= chunks.length) {
+    if (segIdx >= segments.length) {
       clearTimers();
       activeSessionMeta = null;
       emitSpeechState({
@@ -1157,17 +1510,19 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
         chunkIndex: 0,
         totalChunks: 0,
         activeVoiceName: activeProfile.labelHi,
+        activeSystemVoiceName: '',
         errorMessage: null
       });
       options?.onEnd?.();
       return;
     }
 
+    const seg = segments[segIdx];
     if (activeSessionMeta) {
-      activeSessionMeta.chunkIndex = idx;
+      activeSessionMeta.chunkIndex = seg.parentIdx;
     }
 
-    const rawChunkText = chunks[idx];
+    const rawChunkText = seg.spokenRaw;
     const detectedKind = classifyChunkLanguage(rawChunkText, effectiveMode);
 
     let spokenPayload = rawChunkText;
@@ -1181,30 +1536,20 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
       spokenPayload =
         attemptMode === 'roman_fallback'
           ? rawChunkText
-          : transliterateRomanSantaliToPhoneticDevanagari(rawChunkText);
+          : normalizeSantaliDevanagariForPureTTS(transliterateRomanSantaliToPhoneticDevanagari(rawChunkText));
     } else {
       targetLocale = 'hi-IN';
-      spokenPayload = rawChunkText;
+      spokenPayload = normalizeSantaliDevanagariForPureTTS(rawChunkText);
     }
 
     if (options?.autoDetectLanguage === false && options?.lang) {
       targetLocale = options.lang;
       if (targetLocale.toLowerCase().startsWith('en')) {
         spokenPayload = rawChunkText;
+      } else {
+        spokenPayload = normalizeSantaliDevanagariForPureTTS(rawChunkText);
       }
     }
-
-    emitSpeechState({
-      isSpeaking: true,
-      isPaused: false,
-      currentChunkText: rawChunkText,
-      chunkIndex: idx,
-      totalChunks: chunks.length,
-      activeVoiceName: activeProfile.labelHi,
-      activeChunkLang: detectedKind,
-      errorMessage: null
-    });
-    options?.onChunkChange?.(idx, chunks.length, rawChunkText);
 
     try {
       const available = getAvailableSystemVoices();
@@ -1220,6 +1565,23 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
             available.find((v) => v.default) ||
             available[0] ||
             null;
+
+      emitSpeechState({
+        isSpeaking: true,
+        isPaused: false,
+        currentChunkText: seg.parentText,
+        chunkIndex: seg.parentIdx,
+        totalChunks: parentChunks.length,
+        activeVoiceName: activeProfile.labelHi,
+        activeSystemVoiceName: voice?.name || '',
+        activeChunkLang: detectedKind,
+        errorMessage: null
+      });
+
+      if (seg.parentIdx !== lastReportedParentIdx) {
+        lastReportedParentIdx = seg.parentIdx;
+        options?.onChunkChange?.(seg.parentIdx, parentChunks.length, seg.parentText);
+      }
 
       // If voice does NOT support Hindi/Devanagari (e.g. en-US / en-IN SAPI only), convert Devanagari to phonetic Roman
       // so the browser speaks aloud instead of silently skipping all Hindi/Santali words!
@@ -1248,8 +1610,19 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
             : targetLocale || 'hi-IN';
       }
 
-      utterance.pitch = Math.max(0.5, Math.min(2, options?.pitch ?? activeProfile.pitch));
-      utterance.rate = Math.max(0.5, Math.min(2, options?.rate ?? activeProfile.rate));
+      const requestedPitch = options?.pitch ?? getUserSpeechPitch();
+      const requestedRate = options?.rate ?? getUserSpeechRate();
+      // Cloud Neural voices (Swara/Neerja Natural, Google हिन्दी) sound cleanest and most consistent near natural pitch 1.0
+      const isNeuralVoice = Boolean(
+        voice && (voice.localService === false || /natural|neural|online|google/i.test(voice.name))
+      );
+      const effectivePitch =
+        isNeuralVoice && activeProfile.gender === 'female' && options?.pitch === undefined
+          ? Math.max(0.95, Math.min(1.06, requestedPitch))
+          : Math.max(0.5, Math.min(2, requestedPitch));
+
+      utterance.pitch = effectivePitch;
+      utterance.rate = Math.max(0.5, Math.min(2, requestedRate));
       utterance.volume = options?.volume ?? 1.0;
 
       let didStart = false;
@@ -1270,8 +1643,9 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
         if (uIdx !== -1) activeUtterances.splice(uIdx, 1);
       };
 
-      // Stall watchdog: if a remote/cloud voice (e.g. Google हिन्दी) hangs silently without calling onstart/onerror within 2.2s,
-      // cancel and retry cleanly with a local/phonetic fallback voice!
+      // Generous grace window for cloud neural female voices (Swara Online Natural / Google हिन्दी / Neerja Natural)
+      // so first-chunk network warmup never gets falsely blacklisted!
+      const stallGraceMs = voice && voice.localService === false ? 4500 : 2600;
       stallWatchdogTimer = setTimeout(() => {
         if (settled || didStart || sessionId !== speechSessionId) return;
         settled = true;
@@ -1285,13 +1659,13 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
           // ignore
         }
         if (attemptMode === 'primary') {
-          speakChunk(idx, 'local_fallback');
+          speakSegment(segIdx, 'local_fallback');
         } else if (attemptMode === 'local_fallback') {
-          speakChunk(idx, 'roman_fallback');
+          speakSegment(segIdx, 'roman_fallback');
         } else {
-          speakChunk(idx + 1, 'primary');
+          speakSegment(segIdx + 1, 'primary');
         }
-      }, 2200);
+      }, stallGraceMs);
 
       utterance.onstart = () => {
         didStart = true;
@@ -1311,12 +1685,12 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
         const elapsed = Date.now() - queuedAt;
         if (!didStart && elapsed < 110 && spokenPayload.length > 8 && attemptMode !== 'roman_fallback') {
           if (voice) unreliableVoiceNames.add(voice.name);
-          speakChunk(idx, 'roman_fallback');
+          speakSegment(segIdx, 'roman_fallback');
           return;
         }
 
         consecutiveErrors = 0;
-        speakChunk(idx + 1, 'primary');
+        speakSegment(segIdx + 1, 'primary');
       };
 
       utterance.onerror = (e) => {
@@ -1342,11 +1716,11 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
         }
 
         if (attemptMode === 'primary') {
-          speakChunk(idx, 'local_fallback');
+          speakSegment(segIdx, 'local_fallback');
           return;
         }
         if (attemptMode === 'local_fallback') {
-          speakChunk(idx, 'roman_fallback');
+          speakSegment(segIdx, 'roman_fallback');
           return;
         }
 
@@ -1365,7 +1739,7 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
           return;
         }
 
-        speakChunk(idx + 1, 'primary');
+        speakSegment(segIdx + 1, 'primary');
       };
 
       synth.speak(utterance);
@@ -1374,20 +1748,32 @@ export function speakWithFemaleVoice(text: string, options?: SpeakOptions) {
       }
     } catch (err) {
       console.error('TTS chunk execution error:', err);
-      speakChunk(idx + 1, 'primary');
+      speakSegment(segIdx + 1, 'primary');
     }
   };
 
-  // Preserve synchronous user-gesture activation when speechSynthesis is idle;
-  // only defer slightly when interrupting a prior speaking utterance.
-  if (wasBusy) {
-    pendingStartTimer = setTimeout(() => {
-      if (sessionId === speechSessionId) {
-        speakChunk(startIdx, 'primary');
-      }
-    }, 75);
+  // Cold-start safety: if browser hasn't populated voices yet on the very first click,
+  // wait briefly (max 240ms) for voiceschanged so chunk 0 also uses the exact pure female voice.
+  const startPlayback = () => {
+    if (sessionId !== speechSessionId) return;
+    speakSegment(startSegIdx, 'primary');
+  };
+
+  const initialVoices = getAvailableSystemVoices();
+  if (initialVoices.length === 0) {
+    let launched = false;
+    const launchOnce = () => {
+      if (launched) return;
+      launched = true;
+      synth.removeEventListener?.('voiceschanged', launchOnce);
+      startPlayback();
+    };
+    synth.addEventListener?.('voiceschanged', launchOnce);
+    pendingStartTimer = setTimeout(launchOnce, 240);
+  } else if (wasBusy) {
+    pendingStartTimer = setTimeout(startPlayback, 75);
   } else {
-    speakChunk(startIdx, 'primary');
+    startPlayback();
   }
 }
 

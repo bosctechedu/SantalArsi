@@ -258,6 +258,7 @@ export type ActiveDesktopTab =
   | 'santali_maternal_child_health'
   | 'santali_report_card_maker'
   | 'santali_literary_pioneers'
+  | 'santali_grammar_course'
   | 'admin_cms'
   | 'translator'
   | 'daily_quiz'
@@ -456,6 +457,7 @@ export type MobileScreen =
   | 'santali_shg_savings_ledger'
   | 'santali_maternal_child_health'
   | 'santali_report_card_maker'
-  | 'santali_literary_pioneers';
+  | 'santali_literary_pioneers'
+  | 'santali_grammar_course';
 
 export type GlobalViewMode = 'desktop' | 'mobile_simulator' | 'presentation';

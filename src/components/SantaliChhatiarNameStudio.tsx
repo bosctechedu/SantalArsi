@@ -136,7 +136,7 @@ export const SantaliChhatiarNameStudio: React.FC = () => {
 
     ctx.fillStyle = '#78350F';
     ctx.font = '600 20px sans-serif';
-    ctx.fillText('Hor Katha Suite · संताली संस्कृति व नामकरण मंच', 600, 718);
+    ctx.fillText('Santal आ़रसी · संताली संस्कृति व नामकरण मंच', 600, 718);
 
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/png');

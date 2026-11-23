@@ -1,7 +1,7 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
- * Hor Katha Suite — PWA In-App Install Prompt Hook (Chromium, Android, Desktop & iOS Safari)
+ * Santal आ़रसी — PWA In-App Install Prompt Hook (Chromium, Android, Desktop & iOS Safari)
  */
 
 import { useState, useEffect, useCallback } from 'react';

@@ -1,7 +1,7 @@
 import { QuizItem, SantaliWord, SiteHeroConfig } from '../types';
 
 export const DEFAULT_HERO_CONFIG: SiteHeroConfig = {
-  welcomeTitle: 'जोहार! Hor Katha Suite में आपका स्वागत है',
+  welcomeTitle: 'जोहार! Santal आ़रसी में आपका स्वागत है',
   subTitle: 'संताली देवनागरी भाषा व संस्कृति मंच · BOSC Tech & Edu',
   motto: 'टाइप करें · सीखें · सुरक्षित करें · प्रचारित करें',
   quoteEnglish: 'Our Language, Our Identity, Our Pride',
@@ -853,9 +853,9 @@ export const SANTALI_DICTIONARY: SantaliWord[] = [
     partOfSpeech: 'Interjection',
     meaningHindi: 'हार्दिक स्वागत, शुभागमन',
     meaningEnglish: 'Warm Welcome, Auspicious Reception',
-    exampleSantali: 'Hor Katha Suite re sagun daram!',
-    exampleEnglish: 'Warm welcome to Hor Katha Suite!',
-    exampleHindi: 'होड़ कथा सुइट में आपका हार्दिक स्वागत है!',
+    exampleSantali: 'Santal आ़रसी re sagun daram!',
+    exampleEnglish: 'Warm welcome to Santal आ़रसी!',
+    exampleHindi: 'Santal आ़रसी में आपका हार्दिक स्वागत है!',
     category: 'others'
   }
 ];

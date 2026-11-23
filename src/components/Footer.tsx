@@ -148,7 +148,7 @@ export const Footer: React.FC<FooterProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 tracking-tight">
-                    Hor Katha Suite
+                    Santal आ़रसी
                   </h3>
                   <p className="text-xs text-emerald-700 font-semibold">
                     v3.7.4 Pro Ultra · BOSC Tech &amp; Edu
@@ -388,7 +388,7 @@ export const Footer: React.FC<FooterProps> = ({
         <div className="border-t border-slate-200 bg-slate-50 px-4 lg:px-8 pt-3.5 pb-20 text-xs text-slate-600">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="text-[11px] text-slate-600">
-              © 2026 <strong className="text-amber-800 font-semibold">Hor Katha Suite</strong>. All rights reserved. | <strong className="text-emerald-700 font-semibold">BOSC Tech &amp; Edu</strong> | <span className="text-amber-700 font-semibold">100% Free &amp; Open Access</span>
+              © 2026 <strong className="text-amber-800 font-semibold">Santal आ़रसी</strong>. All rights reserved. | <strong className="text-emerald-700 font-semibold">BOSC Tech &amp; Edu</strong> | <span className="text-amber-700 font-semibold">100% Free &amp; Open Access</span>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600">

@@ -183,7 +183,7 @@ export const SantaliSongLyricBuilder: React.FC = () => {
 
     ctx.fillStyle = '#78350F';
     ctx.font = 'bold 22px sans-serif';
-    ctx.fillText(`होड़ काथा सेरेञ स्टूडियो · ${ragaStyle}`, 60, 86);
+    ctx.fillText(`Santal आ़रसी सेरेञ स्टूडियो · ${ragaStyle}`, 60, 86);
 
     ctx.fillStyle = '#0F172A';
     ctx.font = 'bold 34px sans-serif';

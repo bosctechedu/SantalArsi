@@ -24,7 +24,7 @@ export const SantaliInvitationCertificateStudio: React.FC = () => {
       setRecipientName('सुनीता मुर्मू');
       setEventOrAwardTitle('संताली भाषा व लोक-संस्कृति उत्कृष्ट सम्मान पत्र');
       setDateLine('13 नवंबर 2026');
-      setVenueLine('होड़ काथा शिक्षा मंच · BOSC Tech & Edu');
+      setVenueLine('Santal आ़रसी शिक्षा मंच · BOSC Tech & Edu');
       setBlessingText('संताली देवनागरी लेखन, वाचन और सांस्कृतिक संरक्षण में सराहनीय योगदान हेतु सादर सम्मानित।');
       setIssuerLine('प्राचार्य एवं ग्राम सभा संयोजक');
     } else {
@@ -197,7 +197,7 @@ ${eventOrAwardTitle}
               <div className="text-xs font-bold uppercase tracking-widest opacity-80 flex items-center justify-center gap-2">
                 <Sparkles className="w-4 h-4" />
                 <span>
-                  {docMode === 'invitation' ? 'सागुन जोहार · नेवता साकाम (सादर निमंत्रण)' : 'होड़ काथा सम्मान प्रमाण-पत्र'}
+                  {docMode === 'invitation' ? 'सागुन जोहार · नेवता साकाम (सादर निमंत्रण)' : 'Santal आ़रसी सम्मान प्रमाण-पत्र'}
                 </span>
               </div>
 

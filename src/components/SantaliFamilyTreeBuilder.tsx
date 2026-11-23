@@ -213,7 +213,7 @@ export const SantaliFamilyTreeBuilder: React.FC = () => {
     ctx.fillStyle = '#64748B';
     ctx.font = '600 16px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Hor Katha Suite · डिजिटल पारिवारिक वंशावली धरोहर', canvas.width / 2, 912);
+    ctx.fillText('Santal आ़रसी · डिजिटल पारिवारिक वंशावली धरोहर', canvas.width / 2, 912);
 
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/png');

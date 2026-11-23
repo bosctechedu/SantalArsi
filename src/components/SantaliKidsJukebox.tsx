@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { speakWithFemaleVoice, playAcousticChime } from '../utils/speech';
+import { speakWithFemaleVoice, stopSpeaking, playAcousticChime } from '../utils/speech';
 import { useAdmin } from '../context/AdminContext';
 import { safeLoadFromStorage, safeSaveToStorage } from '../utils/storage';
 import {
@@ -245,8 +245,7 @@ export const SantaliKidsJukebox: React.FC = () => {
     setTimeout(() => {
       speakWithFemaleVoice(`${verse.hindi}. ${verse.roman}`, {
         lang: 'hi-IN',
-        pitch: 1.25,
-        rate: 0.85,
+        rate: 0.88,
         onEnd: () => {
           if (idx + 1 < selectedRhyme.verses.length) {
             handleSingVerse(idx + 1);
@@ -259,7 +258,7 @@ export const SantaliKidsJukebox: React.FC = () => {
   };
 
   const handleStop = () => {
-    window.speechSynthesis?.cancel();
+    stopSpeaking();
     setSingingIdx(null);
   };
 

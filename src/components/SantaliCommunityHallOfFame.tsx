@@ -162,7 +162,7 @@ export const SantaliCommunityHallOfFame: React.FC = () => {
     ctx.fillStyle = '#78350F';
     ctx.font = 'bold 30px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('होड़ काथा सामुदायिक भाषा संरक्षण सम्मान-पत्र', 700, 140);
+    ctx.fillText('Santal आ़रसी सामुदायिक भाषा संरक्षण सम्मान-पत्र', 700, 140);
 
     ctx.fillStyle = '#0F172A';
     ctx.font = 'bold 48px sans-serif';
@@ -198,7 +198,7 @@ export const SantaliCommunityHallOfFame: React.FC = () => {
 
     ctx.fillStyle = '#475569';
     ctx.font = '600 20px sans-serif';
-    ctx.fillText(`दिनांक: ${new Date().toLocaleDateString('hi-IN')}  ·  Hor Katha Suite · BOSC Tech & Edu`, 700, 820);
+    ctx.fillText(`दिनांक: ${new Date().toLocaleDateString('hi-IN')}  ·  Santal आ़रसी · BOSC Tech & Edu`, 700, 820);
 
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/png');
@@ -341,7 +341,7 @@ export const SantaliCommunityHallOfFame: React.FC = () => {
               शब्द: {activeCertificateSubject.approvedWords} · ऑडियो: {activeCertificateSubject.approvedVoiceNotes} · वोट: {activeCertificateSubject.voiceUpvotes} · कुल स्कोर: <strong>{activeCertificateSubject.totalScore}</strong>
             </div>
             <p className="text-[11px] text-slate-500">
-              Hor Katha Suite · BOSC Tech &amp; Edu · {new Date().toLocaleDateString('hi-IN')}
+              Santal आ़रसी · BOSC Tech &amp; Edu · {new Date().toLocaleDateString('hi-IN')}
             </p>
           </div>
 

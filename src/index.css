@@ -1,12 +1,13 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.never-dark-mode-enabled, .never-dark-mode-enabled *));
 
 @layer base {
   html {
+    color-scheme: light;
     font-size: 16.5px;
-    scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
+    text-rendering: optimizeSpeed;
   }
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -14,6 +15,7 @@
     background-color: #f8fafc;
     line-height: 1.55;
     overflow-x: hidden;
+    overscroll-behavior-y: contain;
   }
   button, a, select {
     touch-action: manipulation;
@@ -32,6 +34,11 @@
 footer[data-edit-region="global_footer"] {
   content-visibility: auto;
   contain-intrinsic-size: auto 380px;
+}
+
+.cv-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 96px;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -87,7 +94,7 @@ footer[data-edit-region="global_footer"] {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   HOR KATHA SUITE — UNIVERSAL LIGHT THEME CONSTITUTION
+   Santal आ़रसी — UNIVERSAL LIGHT THEME CONSTITUTION
    Ensures all 200+ sections render on clean bright surfaces with crisp,
    high-contrast ink while preserving solid buttons, small icon badges,
    uploaded photo overlays, device bezels, and canvases.

@@ -411,7 +411,7 @@ export const AdivasiFloraWorksheet: React.FC = () => {
 
               {/* Sheet Footer */}
               <div className="pt-10 mt-8 border-t border-slate-200 text-center text-[10px] text-slate-400 font-sans">
-                Printed from Hor Katha Suite (BOSC Tech &amp; Edu) · Free for Tribal Schools &amp; Adivasi Literacy Programs
+                Printed from Santal आ़रसी (BOSC Tech &amp; Edu) · Free for Tribal Schools &amp; Adivasi Literacy Programs
               </div>
             </div>
           </div>

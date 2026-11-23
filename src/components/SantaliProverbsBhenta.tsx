@@ -164,7 +164,7 @@ export const SantaliProverbsBhenta: React.FC = () => {
   }, [proverbs]);
 
   const handleCopy = (item: BhentaKathaItem) => {
-    const text = `🌸 संताली भेंता काथा (Santali Proverb):\n"${item.santaliDevanagari}"\n(${item.santaliRoman})\n\n📖 शाब्दिक अर्थ: ${item.literalHindi}\n💡 गूढ़ दार्शनिक भावार्थ: ${item.deepMeaningHindi}\n\n- Hor Katha Suite`;
+    const text = `🌸 संताली भेंता काथा (Santali Proverb):\n"${item.santaliDevanagari}"\n(${item.santaliRoman})\n\n📖 शाब्दिक अर्थ: ${item.literalHindi}\n💡 गूढ़ दार्शनिक भावार्थ: ${item.deepMeaningHindi}\n\n- Santal आ़रसी`;
     navigator.clipboard.writeText(text);
     setCopiedId(item.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -172,7 +172,7 @@ export const SantaliProverbsBhenta: React.FC = () => {
 
   const handleShareWhatsApp = (item: BhentaKathaItem) => {
     const text = encodeURIComponent(
-      `🌿 संताली भेंता काथा (Proverb):\n"${item.santaliDevanagari}"\n\n💡 भावार्थ: ${item.deepMeaningHindi}\n\n- Hor Katha Suite`
+      `🌿 संताली भेंता काथा (Proverb):\n"${item.santaliDevanagari}"\n\n💡 भावार्थ: ${item.deepMeaningHindi}\n\n- Santal आ़रसी`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };

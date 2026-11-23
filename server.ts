@@ -1,9 +1,14 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import zlib from 'zlib';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+
+const execAsync = promisify(exec);
 
 dotenv.config();
 
@@ -234,7 +239,7 @@ async function dispatchAdminOtpEmail(opts: {
   const text = [
     'Johar!',
     '',
-    `Your Super Admin Password Verification OTP for Santal Arsi (Hor Katha Suite) is: ${otp}`,
+    `Your Super Admin Password Verification OTP for Santal आ़रसी is: ${otp}`,
     '',
     `This code is valid for ${expiresMinutes} minutes and applies strictly to ${to}.`,
     'If you did not request this password change, please ignore this email.'
@@ -1478,9 +1483,9 @@ app.post('/api/ai-chat', async (req, res) => {
     if (!aiClient) {
       // Offline fallback with knowledge
       res.json({
-        reply: `Johar! I am your BOSC Global AI Assistant (DeepSeek Engine) for Hor Katha Suite. Currently running in offline mode. For live Google Search grounding and unlimited queries, ensure your GEMINI_API_KEY is configured. In the meantime, you can explore the 10,000+ dictionary words, Santali Devanagari keyboard, and cultural festivals calendar!`,
+        reply: `Johar! I am your BOSC Global AI Assistant (DeepSeek Engine) for Santal आ़रसी. Currently running in offline mode. For live Google Search grounding and unlimited queries, ensure your GEMINI_API_KEY is configured. In the meantime, you can explore the 10,000+ dictionary words, Santali Devanagari keyboard, and cultural festivals calendar!`,
         thinkingProcess: deepThink
-          ? `1. Query parsed: "${message}"\n2. Running in offline fallback mode.\n3. Recommending local Hor Katha Suite features: Santali Devanagari keyboard, 10,000+ dictionary entries, cultural festivals calendar.`
+          ? `1. Query parsed: "${message}"\n2. Running in offline fallback mode.\n3. Recommending local Santal आ़रसी features: Santali Devanagari keyboard, 10,000+ dictionary entries, cultural festivals calendar.`
           : undefined,
         sources: [],
         webSearchQueries: [],
@@ -1490,7 +1495,7 @@ app.post('/api/ai-chat', async (req, res) => {
       return;
     }
 
-    let systemInstruction = `You are 'DeepSeek AI Search Assistant (BOSC Edition)' — the world-class intelligent indigenous linguistic, cultural, and live web knowledge search engine for Hor Katha Suite by BOSC Tech & Edu.
+    let systemInstruction = `You are 'DeepSeek AI Search Assistant (BOSC Edition)' — the world-class intelligent indigenous linguistic, cultural, and live web knowledge search engine for Santal आ़रसी by BOSC Tech & Edu.
 You provide the world's best, most accurate, real-time grounded search results across:
 1. Santali language (Roman Santali orthography with standard accents: ā, ī, ū, ē, ō, a̧, ȩ, ñ, ṇ, ṭ, ḍ, ṛ, ṅ, ṃ, ḥ, and Santali Devanagari).
 2. Direct translation and vocabulary between Santali, Hindi, and English.
@@ -1558,7 +1563,7 @@ Before writing your final answer, you MUST start your response with a deep think
       rawReply = rawReply.replace(/<think>[\s\S]*?<\/think>/i, '').trim();
     } else if (deepThink) {
       // If model did not output tags, construct synthetic thought trace
-      thinkingProcess = `• Analyzed query: "${message}"\n• Cross-referenced Hor Katha indigenous Santali linguistic corpus & historical archives (1855 Hul, Sidhu-Kanhu, Ol Guru)\n• Evaluated Devanagari and Roman Santali phonetics\n• Synthesized verified, high-accuracy multi-lingual response`;
+      thinkingProcess = `• Analyzed query: "${message}"\n• Cross-referenced Santal आ़रसी indigenous Santali linguistic corpus & historical archives (1855 Hul, Sidhu-Kanhu, Ol Guru)\n• Evaluated Devanagari and Roman Santali phonetics\n• Synthesized verified, high-accuracy multi-lingual response`;
     }
 
     // Extract Google Search grounding sources
@@ -1594,31 +1599,217 @@ Before writing your final answer, you MUST start your response with a deep think
   }
 });
 
-// Downloadable Cloudflare Pages deployment bundles (dist ZIP for Direct Upload, source ZIP for GitHub/Wrangler)
-app.get('/api/cloudflare-dist.zip', (_req, res) => {
-  const zipPath = path.resolve(__dirname, '.cloudflare-export', 'horkathasuite-cloudflare-dist.zip');
-  if (!fs.existsSync(zipPath)) {
-    res.status(404).json({ error: 'Cloudflare dist bundle not generated yet. Run npm run build first.' });
-    return;
+// Zero-dependency PKZIP writer (IEEE CRC32 + DEFLATE) so Cloudflare export ZIPs always work even after cold container restarts
+const ZIP_CRC32_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) {
+      c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[i] = c >>> 0;
   }
+  return table;
+})();
+
+function zipCrc32(buf: Buffer): number {
+  let crc = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) {
+    crc = ZIP_CRC32_TABLE[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function collectFilesRecursively(
+  baseDir: string,
+  currentDir: string,
+  options: { skipDirs?: Set<string>; filterFile?: (relPath: string, fileName: string) => boolean }
+): { absPath: string; relPath: string }[] {
+  const results: { absPath: string; relPath: string }[] = [];
+  if (!fs.existsSync(currentDir)) return results;
+  const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const absPath = path.join(currentDir, entry.name);
+    if (entry.isDirectory()) {
+      if (options.skipDirs?.has(entry.name)) continue;
+      results.push(...collectFilesRecursively(baseDir, absPath, options));
+    } else if (entry.isFile()) {
+      const relPath = path.relative(baseDir, absPath).split(path.sep).join('/');
+      if (options.filterFile && !options.filterFile(relPath, entry.name)) continue;
+      results.push({ absPath, relPath });
+    }
+  }
+  return results;
+}
+
+function writeZipArchive(files: { absPath: string; relPath: string }[], outPath: string): void {
+  const localParts: Buffer[] = [];
+  const centralParts: Buffer[] = [];
+  let offset = 0;
+
+  for (const file of files) {
+    const raw = fs.readFileSync(file.absPath);
+    const crc = zipCrc32(raw);
+    const deflated = zlib.deflateRawSync(raw, { level: 6 });
+    const useDeflate = deflated.length < raw.length;
+    const payload = useDeflate ? deflated : raw;
+    const method = useDeflate ? 8 : 0;
+    const nameBuf = Buffer.from(file.relPath, 'utf8');
+
+    const localHeader = Buffer.alloc(30);
+    localHeader.writeUInt32LE(0x04034b50, 0);
+    localHeader.writeUInt16LE(20, 4);
+    localHeader.writeUInt16LE(0x0800, 6);
+    localHeader.writeUInt16LE(method, 8);
+    localHeader.writeUInt16LE(0, 10);
+    localHeader.writeUInt16LE(0x5821, 12);
+    localHeader.writeUInt32LE(crc, 14);
+    localHeader.writeUInt32LE(payload.length, 18);
+    localHeader.writeUInt32LE(raw.length, 22);
+    localHeader.writeUInt16LE(nameBuf.length, 26);
+    localHeader.writeUInt16LE(0, 28);
+
+    localParts.push(localHeader, nameBuf, payload);
+
+    const centralHeader = Buffer.alloc(46);
+    centralHeader.writeUInt32LE(0x02014b50, 0);
+    centralHeader.writeUInt16LE(20, 4);
+    centralHeader.writeUInt16LE(20, 6);
+    centralHeader.writeUInt16LE(0x0800, 8);
+    centralHeader.writeUInt16LE(method, 10);
+    centralHeader.writeUInt16LE(0, 12);
+    centralHeader.writeUInt16LE(0x5821, 14);
+    centralHeader.writeUInt32LE(crc, 16);
+    centralHeader.writeUInt32LE(payload.length, 20);
+    centralHeader.writeUInt32LE(raw.length, 24);
+    centralHeader.writeUInt16LE(nameBuf.length, 28);
+    centralHeader.writeUInt16LE(0, 30);
+    centralHeader.writeUInt16LE(0, 32);
+    centralHeader.writeUInt16LE(0, 34);
+    centralHeader.writeUInt16LE(0, 36);
+    centralHeader.writeUInt32LE(0, 38);
+    centralHeader.writeUInt32LE(offset, 42);
+
+    centralParts.push(centralHeader, nameBuf);
+    offset += 30 + nameBuf.length + payload.length;
+  }
+
+  const centralSize = centralParts.reduce((sum, b) => sum + b.length, 0);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(0, 4);
+  eocd.writeUInt16LE(0, 6);
+  eocd.writeUInt16LE(files.length, 8);
+  eocd.writeUInt16LE(files.length, 10);
+  eocd.writeUInt32LE(centralSize, 12);
+  eocd.writeUInt32LE(offset, 16);
+  eocd.writeUInt16LE(0, 20);
+
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  const tmpPath = `${outPath}.tmp.${Date.now()}`;
+  fs.writeFileSync(tmpPath, Buffer.concat([...localParts, ...centralParts, eocd]));
+  fs.renameSync(tmpPath, outPath);
+}
+
+let cloudflareZipBuildPromise: Promise<void> | null = null;
+
+async function ensureCloudflareExportZips(forceRebuild = false): Promise<{ distZip: string; sourceZip: string }> {
+  const exportDir = path.resolve(__dirname, '.cloudflare-export');
+  const distZip = path.join(exportDir, 'horkathasuite-cloudflare-dist.zip');
+  const sourceZip = path.join(exportDir, 'horkathasuite-cloudflare-source.zip');
+  const distIndex = path.resolve(__dirname, 'dist', 'index.html');
+
+  const needsBuild = forceRebuild || !fs.existsSync(distIndex) || !fs.existsSync(distZip) || !fs.existsSync(sourceZip);
+  if (!needsBuild) {
+    return { distZip, sourceZip };
+  }
+
+  if (!cloudflareZipBuildPromise) {
+    cloudflareZipBuildPromise = (async () => {
+      try {
+        if (forceRebuild || !fs.existsSync(distIndex)) {
+          await execAsync('npm run build', {
+            cwd: __dirname,
+            maxBuffer: 20 * 1024 * 1024,
+            timeout: 120000,
+          });
+        }
+
+        const distDir = path.resolve(__dirname, 'dist');
+        if (fs.existsSync(distDir)) {
+          const distFiles = collectFilesRecursively(distDir, distDir, {});
+          writeZipArchive(distFiles, distZip);
+        }
+
+        const SKIP_DIRS = new Set(['node_modules', '.git', '.cloudflare-export', '.aistudio', '__pycache__']);
+        const sourceFiles = collectFilesRecursively(__dirname, __dirname, {
+          skipDirs: SKIP_DIRS,
+          filterFile: (relPath, fileName) => {
+            if (fileName.endsWith('.log')) return false;
+            if (relPath.startsWith('public/assets/aistudio/') && fileName !== 'bosc-main-logo_39d98de6.png') {
+              return false;
+            }
+            return true;
+          },
+        });
+        writeZipArchive(sourceFiles, sourceZip);
+      } finally {
+        cloudflareZipBuildPromise = null;
+      }
+    })();
+  }
+
+  await cloudflareZipBuildPromise;
+  return { distZip, sourceZip };
+}
+
+function streamZipFile(res: express.Response, zipPath: string, downloadName: string): void {
+  const stat = fs.statSync(zipPath);
   res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
+  res.setHeader('Content-Length', String(stat.size));
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.download(zipPath, 'santalarsi-cloudflare-dist.zip');
+  const stream = fs.createReadStream(zipPath);
+  stream.on('error', (err) => {
+    console.error('[ZIP Stream Error]', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to stream ZIP file.' });
+    }
+  });
+  stream.pipe(res);
+}
+
+// Downloadable Cloudflare Pages deployment bundles (auto-generated on demand if missing)
+app.get('/api/cloudflare-dist.zip', async (req, res) => {
+  try {
+    const force = req.query.rebuild === '1';
+    const { distZip } = await ensureCloudflareExportZips(force);
+    if (!fs.existsSync(distZip)) {
+      res.status(500).json({ error: 'Cloudflare dist bundle could not be generated.' });
+      return;
+    }
+    streamZipFile(res, distZip, 'santalarsi-cloudflare-dist.zip');
+  } catch (err: any) {
+    console.error('[Cloudflare Dist ZIP Error]', err);
+    res.status(500).json({ error: 'Failed to prepare dist ZIP.', details: err?.message || 'Unknown error' });
+  }
 });
 
-app.get('/api/cloudflare-source.zip', (_req, res) => {
-  const zipPath = path.resolve(__dirname, '.cloudflare-export', 'horkathasuite-cloudflare-source.zip');
-  if (!fs.existsSync(zipPath)) {
-    res.status(404).json({ error: 'Cloudflare source bundle not generated yet.' });
-    return;
+app.get('/api/cloudflare-source.zip', async (req, res) => {
+  try {
+    const force = req.query.rebuild === '1';
+    const { sourceZip } = await ensureCloudflareExportZips(force);
+    if (!fs.existsSync(sourceZip)) {
+      res.status(500).json({ error: 'Cloudflare source bundle could not be generated.' });
+      return;
+    }
+    streamZipFile(res, sourceZip, 'santalarsi-cloudflare-source.zip');
+  } catch (err: any) {
+    console.error('[Cloudflare Source ZIP Error]', err);
+    res.status(500).json({ error: 'Failed to prepare source ZIP.', details: err?.message || 'Unknown error' });
   }
-  res.setHeader('Content-Type', 'application/zip');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  res.download(zipPath, 'santalarsi-cloudflare-source.zip');
 });
 
 app.get('/api/push.bat', (_req, res) => {
@@ -1637,10 +1828,10 @@ async function startServer() {
   const isProduction = process.env.NODE_ENV === 'production';
 
   if (!isProduction) {
-    // Mount Vite middlewares in development
+    // Mount Vite middlewares in development (HMR disabled for container/iFrame stability)
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -1654,8 +1845,11 @@ async function startServer() {
   }
 
   app.listen(Number(PORT), '0.0.0.0', () => {
-    console.log(`🚀 Hor Katha Suite server running on http://0.0.0.0:${PORT}`);
+    console.log(`🚀 Santal आ़रसी server running on http://0.0.0.0:${PORT}`);
   });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error('Failed to start Santal आ़रसी server:', err);
+  process.exit(1);
+});

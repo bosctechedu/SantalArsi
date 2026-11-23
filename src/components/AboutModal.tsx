@@ -29,7 +29,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             <CulturalTree variant="emblem" className="w-8 h-8" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900">Hor Katha Suite</h3>
+            <h3 className="text-lg font-bold text-slate-900">Santal आ़रसी</h3>
             <p className="text-xs text-amber-800 font-semibold">
               v3.7.4 Pro Ultra · BOSC Tech &amp; Edu
             </p>
@@ -39,7 +39,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         {/* Content */}
         <div className="mt-4 space-y-4 text-xs sm:text-sm text-slate-600 leading-relaxed">
           <p>
-            <strong>Hor Katha Suite</strong> is an integrated digital platform dedicated to preserving, promoting, and democratizing the <strong>Santali language (संताली)</strong> and its rich <strong>Santali Devanagari script</strong> and oral traditions.
+            <strong>Santal आ़रसी</strong> is an integrated digital platform dedicated to preserving, promoting, and democratizing the <strong>Santali language (संताली)</strong> and its rich <strong>Santali Devanagari script</strong> and oral traditions.
           </p>
 
           <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200/80 space-y-1.5 text-xs">

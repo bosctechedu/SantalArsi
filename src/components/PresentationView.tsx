@@ -43,7 +43,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
           </div>
           <div>
             <h1 className="text-base sm:text-lg font-bold text-slate-900">
-              Hor Katha Suite v3.7.4 Pre Ultra — BOSC Tech &amp; Edu
+              Santal आ़रसी v3.7.4 Pre Ultra — BOSC Tech &amp; Edu
             </h1>
             <p className="text-xs text-slate-600">
               Santali Language &amp; Learning Platform · Full Visual Design System
@@ -61,7 +61,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
         <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
           <Monitor className="w-5 h-5 text-sky-600" />
           <h2 className="text-sm sm:text-base font-bold text-slate-900">
-            Desktop Website Views (Hor Katha Suite v3.7.4 Pre Ultra — BOSC Tech &amp; Edu)
+            Desktop Website Views (Santal आ़रसी v3.7.4 Pre Ultra — BOSC Tech &amp; Edu)
           </h2>
         </div>
 
@@ -86,7 +86,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
             <div className="w-48 bg-white p-3 rounded-2xl border border-slate-200 shrink-0 hidden md:block space-y-4 text-xs">
               <div className="flex items-center gap-2">
                 <CulturalTree variant="emblem" className="w-6 h-6" />
-                <span className="font-bold text-slate-800">Hor Katha Suite</span>
+                <span className="font-bold text-slate-800">Santal आ़रसी</span>
               </div>
               <div className="space-y-1 text-slate-600">
                 <div className="p-1.5 bg-sky-50 text-sky-700 font-semibold rounded-lg">🏠 Home</div>
@@ -112,7 +112,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
               {/* Johar Hero Banner */}
               <div className="p-6 bg-gradient-to-r from-amber-50 via-amber-100 to-amber-200/60 rounded-2xl border border-amber-200 flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-black text-amber-950">Johar! Welcome to Hor Katha Suite</h3>
+                  <h3 className="text-xl font-black text-amber-950">Johar! Welcome to Santal आ़रसी</h3>
                   <p className="text-xs text-amber-900/80 mt-1">Santali Language &amp; Learning Platform · Type · Learn · Preserve</p>
                   <button
                     onClick={() => onSelectDesktopModule('home')}
@@ -181,13 +181,13 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
         </div>
       </section>
 
-      {/* SECTION 2: Mobile App Views (Android — Hor Katha Suite Keyboard) */}
+      {/* SECTION 2: Mobile App Views (Android — Santal आ़रसी Keyboard) */}
       <section className="space-y-4">
         <div className="flex items-center justify-between border-b border-slate-200 pb-2">
           <div className="flex items-center gap-2">
             <Smartphone className="w-5 h-5 text-sky-600" />
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              Mobile App Views (Android — Hor Katha Suite Keyboard)
+              Mobile App Views (Android — Santal आ़रसी Keyboard)
             </h2>
           </div>
           <span className="text-xs text-slate-500 font-medium">8 Full Screens</span>
@@ -205,7 +205,7 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
                 <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto">
                   <CulturalTree variant="emblem" className="w-8 h-8" />
                 </div>
-                <h4 className="text-sm font-bold text-slate-900">Hor Katha Suite</h4>
+                <h4 className="text-sm font-bold text-slate-900">Santal आ़रसी</h4>
                 <p className="text-[10px] text-slate-500">v3.7.4 Pro Ultra</p>
                 <p className="text-[10px] text-amber-800 font-semibold">BOSC Tech &amp; Edu</p>
               </div>
@@ -490,14 +490,14 @@ export const PresentationView: React.FC<PresentationViewProps> = ({
         </div>
       </section>
 
-      {/* SECTION 3: Bottom Presentation Strip (Hor Katha Suite v3.7.4 Pro Ultra - BOSC Tech & Edu) */}
+      {/* SECTION 3: Bottom Presentation Strip (Santal आ़रसी v3.7.4 Pro Ultra - BOSC Tech & Edu) */}
       <footer className="p-6 bg-white text-slate-900 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center">
             <CulturalTree variant="emblem" className="w-7 h-7" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900 tracking-tight">Hor Katha Suite</h3>
+            <h3 className="text-base font-bold text-slate-900 tracking-tight">Santal आ़रसी</h3>
             <p className="text-xs text-slate-500">
               v3.7.4 Pro Ultra · BOSC Tech &amp; Edu
             </p>

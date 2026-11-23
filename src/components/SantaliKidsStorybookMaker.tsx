@@ -369,7 +369,7 @@ export const SantaliKidsStorybookMaker: React.FC = () => {
         <div className="border-b-2 border-slate-900 pb-4 text-center">
           <h1 className="text-2xl font-bold">{toDevanagariAuto(bookTitle)}</h1>
           <p className="text-lg font-bold text-amber-800">{toOlChikiAuto(bookTitle)}</p>
-          <p className="text-xs text-slate-600 mt-1">{authorName} · Hor Katha Suite</p>
+          <p className="text-xs text-slate-600 mt-1">{authorName} · Santal आ़रसी</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
           {pages.map((p, idx) => (

@@ -144,18 +144,28 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   const handleDownloadGithubSourceZip = async () => {
     if (downloadingSourceZip) return;
     setDownloadingSourceZip(true);
-    setZipDownloadMsg(null);
+    setZipDownloadMsg({
+      success: true,
+      text: '⏳ नया santalarsi-cloudflare-source.zip (dist सहित) तैयार व डाउनलोड हो रहा है...'
+    });
     try {
       const res = await fetch(`/api/cloudflare-source.zip?v=${Date.now()}`, {
         method: 'GET',
         credentials: 'include',
         cache: 'no-store'
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const isPagesHost =
+          typeof window !== 'undefined' && window.location.hostname.endsWith('.pages.dev');
+        if (isPagesHost && res.status === 404) {
+          throw new Error('PAGES_STATIC_HOST');
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
       const contentType = res.headers.get('content-type') || '';
       const blob = await res.blob();
       if (contentType.includes('text/html') || blob.size < 50000) {
-        throw new Error('Invalid ZIP payload');
+        throw new Error('INVALID_ZIP');
       }
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -169,10 +179,14 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         success: true,
         text: `✅ santalarsi-cloudflare-source.zip (${(blob.size / (1024 * 1024)).toFixed(2)} MB) डाउनलोड हो गया!`
       });
-    } catch {
+    } catch (err: any) {
+      const code = err?.message || '';
       setZipDownloadMsg({
         success: false,
-        text: 'डाउनलोड त्रुटि: कृपया Master Studio → मास्टर बैकअप से पुनः प्रयास करें।'
+        text:
+          code === 'PAGES_STATIC_HOST'
+            ? 'यह बटन AI Studio Preview में काम करता है (लाइव Cloudflare साइट पर Source ZIP उपलब्ध नहीं होता)।'
+            : `डाउनलोड त्रुटि (${code || 'नेटवर्क'}): कृपया 5 सेकंड बाद पुनः क्लिक करें।`
       });
     } finally {
       setDownloadingSourceZip(false);

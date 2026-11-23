@@ -136,7 +136,7 @@ export const CalligraphyStudio: React.FC = () => {
   const [selectedTheme, setSelectedTheme] = useState<ThemeStyle>(THEMES[0]);
   const [mainText, setMainText] = useState('जोहार');
   const [subText, setSubText] = useState('Johar · Greetings of Respect');
-  const [authorText, setAuthorText] = useState('Hor Katha Suite · Santali Devanagari Heritage');
+  const [authorText, setAuthorText] = useState('Santal आ़रसी · Santali Devanagari Heritage');
   const [fontSize, setFontSize] = useState<number>(56);
   const [selectedSymbol, setSelectedSymbol] = useState<string>('🪘');
   const [borderStyle, setBorderStyle] = useState<'sohrai' | 'geometric' | 'minimal'>('sohrai');
@@ -503,7 +503,7 @@ export const CalligraphyStudio: React.FC = () => {
             <div className="text-center pt-2 relative z-10">
               <div className="inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[11px] font-bold tracking-widest uppercase" style={{ color: selectedTheme.textColor }}>
                 <span>{selectedSymbol}</span>
-                <span>HOR KATHA SUITE · SANTALI HERITAGE</span>
+                <span>Santal आ़रसी · SANTALI HERITAGE</span>
                 <span>{selectedSymbol}</span>
               </div>
             </div>

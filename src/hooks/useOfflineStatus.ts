@@ -1,7 +1,7 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
- * Hor Katha Suite — Offline status and sync hook
+ * Santal आ़रसी — Offline status and sync hook
  */
 
 import { useState, useEffect, useCallback } from 'react';

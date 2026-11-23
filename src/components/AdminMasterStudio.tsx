@@ -286,6 +286,7 @@ export const AdminMasterStudio: React.FC<{ onClose?: () => void; initialTab?: Ad
     setDownloadingZipKind(kind);
     const filename =
       kind === 'dist' ? 'santalarsi-cloudflare-dist.zip' : 'santalarsi-cloudflare-source.zip';
+    showNotification(`⏳ ${filename} तैयार व डाउनलोड हो रहा है... कृपया प्रतीक्षा करें।`);
     try {
       const res = await fetch(`/api/cloudflare-${kind}.zip?v=${Date.now()}`, {
         method: 'GET',
@@ -293,12 +294,17 @@ export const AdminMasterStudio: React.FC<{ onClose?: () => void; initialTab?: Ad
         cache: 'no-store'
       });
       if (!res.ok) {
+        const isPagesHost =
+          typeof window !== 'undefined' && window.location.hostname.endsWith('.pages.dev');
+        if (isPagesHost && res.status === 404) {
+          throw new Error('PAGES_STATIC_HOST');
+        }
         throw new Error(`HTTP ${res.status}`);
       }
       const contentType = res.headers.get('content-type') || '';
       const blob = await res.blob();
       if (contentType.includes('text/html') || blob.size < 50000) {
-        throw new Error('Invalid ZIP payload received');
+        throw new Error('INVALID_ZIP');
       }
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -310,9 +316,12 @@ export const AdminMasterStudio: React.FC<{ onClose?: () => void; initialTab?: Ad
       window.setTimeout(() => URL.revokeObjectURL(url), 4000);
       const sizeMb = (blob.size / (1024 * 1024)).toFixed(2);
       showNotification(`✅ ${filename} (${sizeMb} MB) सफलतापूर्वक डाउनलोड हो गया!`);
-    } catch {
+    } catch (err: any) {
+      const code = err?.message || '';
       showNotification(
-        '⚠️ सीधे डाउनलोड ब्लॉक हुआ। कृपया नीचे Backup JSON एक्सपोर्ट उपयोग करें या Google Preview सेशन से पुनः प्रयास करें।'
+        code === 'PAGES_STATIC_HOST'
+          ? '⚠️ Source/Dist ZIP केवल AI Studio Preview से डाउनलोड होता है (लाइव Cloudflare साइट से नहीं)।'
+          : `⚠️ डाउनलोड त्रुटि (${code || 'नेटवर्क'}): कृपया 5 सेकंड बाद पुनः क्लिक करें।`
       );
     } finally {
       setDownloadingZipKind(null);

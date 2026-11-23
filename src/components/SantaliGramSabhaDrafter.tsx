@@ -1238,7 +1238,7 @@ ${displayedBody}${enclosureBlock}${attendanceBlock}
   };
 
   const handleCopyWhatsAppSummary = async () => {
-    const msg = `जोहार! *${activeTemplateMeta.label}*\nग्राम: ${village} (${tola}), प्रखंड: ${block}, जिला: ${district}\nदिनांक: ${formattedDate} | पत्रांक: ${refNumber || '—'}\n\n*मुख्य विषय:* ${subjectDetail}\n*प्रमुख आवेदक:* ${applicantName} (${clan})\n*ग्राम प्रधान (मांझी हाड़ाम):* ${majhiName}\n\n— होड़ काथा ग्राम सभा ड्राफ़्टर`;
+    const msg = `जोहार! *${activeTemplateMeta.label}*\nग्राम: ${village} (${tola}), प्रखंड: ${block}, जिला: ${district}\nदिनांक: ${formattedDate} | पत्रांक: ${refNumber || '—'}\n\n*मुख्य विषय:* ${subjectDetail}\n*प्रमुख आवेदक:* ${applicantName} (${clan})\n*ग्राम प्रधान (मांझी हाड़ाम):* ${majhiName}\n\n— Santal आ़रसी ग्राम सभा ड्राफ़्टर`;
     try {
       await navigator.clipboard.writeText(msg);
       setCopiedMode('whatsapp');

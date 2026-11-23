@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // In AI Studio iFrame sandbox, WebSockets are disabled by design.
+      // Safely mock Vite HMR WebSocket so @vite/client never throws 'WebSocket closed without opened'.
+      (function() {
+        if (typeof window === 'undefined') return;
+        const NativeWebSocket = window.WebSocket;
+
+        class ViteSafeWebSocket extends EventTarget {
+          constructor(url, protocols) {
+            super();
+            this.url = url;
+            this.protocols = protocols;
+            this.readyState = 1; // WebSocket.OPEN
+            this.CONNECTING = 0;
+            this.OPEN = 1;
+            this.CLOSING = 2;
+            this.CLOSED = 3;
+            this.bufferedAmount = 0;
+            this.binaryType = 'blob';
+            this.protocol = typeof protocols === 'string' ? protocols : '';
+            setTimeout(() => {
+              const openEvent = new Event('open');
+              this.dispatchEvent(openEvent);
+              if (typeof this.onopen === 'function') this.onopen(openEvent);
+            }, 10);
+          }
+          send() {}
+          close() {
+            this.readyState = 3;
+            const closeEvent = new Event('close');
+            Object.defineProperty(closeEvent, 'wasClean', { value: true });
+            this.dispatchEvent(closeEvent);
+            if (typeof this.onclose === 'function') this.onclose(closeEvent);
+          }
+        }
+        ViteSafeWebSocket.CONNECTING = 0;
+        ViteSafeWebSocket.OPEN = 1;
+        ViteSafeWebSocket.CLOSING = 2;
+        ViteSafeWebSocket.CLOSED = 3;
+
+        window.WebSocket = function(url, protocols) {
+          if (protocols === 'vite-hmr' || (typeof url === 'string' && (url.includes('vite') || url.includes(window.location.host)))) {
+            return new ViteSafeWebSocket(url, protocols);
+          }
+          if (NativeWebSocket) {
+            try {
+              return new NativeWebSocket(url, protocols);
+            } catch (err) {
+              return new ViteSafeWebSocket(url, protocols);
+            }
+          }
+          return new ViteSafeWebSocket(url, protocols);
+        };
+        window.WebSocket.CONNECTING = 0;
+        window.WebSocket.OPEN = 1;
+        window.WebSocket.CLOSING = 2;
+        window.WebSocket.CLOSED = 3;
+        window.WebSocket.prototype = ViteSafeWebSocket.prototype;
+
+        // Catch and suppress any trailing unhandled WebSocket errors
+        window.addEventListener('error', function(e) {
+          if (e && e.message && (e.message.indexOf('WebSocket') !== -1 || e.message.indexOf('vite') !== -1)) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(e) {
+          if (e && e.reason && String(e.reason).indexOf('WebSocket') !== -1) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+          }
+        }, true);
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Santal आ़रसी · Santali Language &amp; Learning Platform</title>
+    <meta name="description" content="Complete Santali language suite with Santali Devanagari keyboard, 10,000+ word dictionary, cultural festivals chronicles, AI search assistant with Google search grounding, and translator by BOSC Tech &amp; Edu." />
+    <meta name="keywords" content="Santal Arsi, santalarsi, Hor Katha, Santali Dictionary, Santali Language, Ol Chiki, Santali Devanagari Keyboard, Santali Translator, Sohrai, Baha Parab, Karam, JPSC Santali, JSSC Santali, Jharkhand, Odisha, West Bengal, Assam, BOSC Tech and Edu" />
+    <link rel="canonical" href="https://santalarsi.pages.dev/" />
+    <meta property="og:title" content="Santal आ़रसी · Santali Language &amp; Learning Platform" />
+    <meta property="og:description" content="Complete Santali language suite with Santali Devanagari keyboard, 10,000+ word dictionary, cultural festivals chronicles, AI search assistant with Google search grounding, and translator by BOSC Tech &amp; Edu." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://santalarsi.pages.dev/" />
+    <meta property="og:site_name" content="Santal आ़रसी" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Santal आ़रसी · Santali Language &amp; Learning Platform" />
+    <meta name="twitter:description" content="Complete Santali language suite with 50,000+ dictionary, Ol Chiki, Devanagari &amp; Roman tools, cultural archives, and CBT exam hub." />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Santal आ़रसी",
+        "alternateName": ["Santal Arsi", "santalarsi.pages.dev", "HorKathaSantali", "Santal आ़रसी"],
+        "url": "https://santalarsi.pages.dev/",
+        "inLanguage": ["sat", "hi", "en"],
+        "publisher": {
+          "@type": "Organization",
+          "name": "BOSC Tech & Edu"
+        }
+      }
+    </script>
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Santal आ़रसी" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Cinzel:wght@600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

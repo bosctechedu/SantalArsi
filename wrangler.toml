@@ -2,9 +2,7 @@ name = "santalarsi"
 compatibility_date = "2025-11-01"
 pages_build_output_dir = "dist"
 
-# Optional: Bind a Cloudflare KV namespace for persistent global Admin/Community/User storage across edge locations.
-# Create KV via: npx wrangler kv namespace create HOR_KATHA_KV
-# Then uncomment and paste your namespace id below (or bind "HOR_KATHA_KV" in Cloudflare Pages Dashboard -> Settings -> Bindings):
-# [[kv_namespaces]]
-# binding = "HOR_KATHA_KV"
-# id = "YOUR_KV_NAMESPACE_ID"
+# Dedicated Cloudflare KV namespace (santalarsi-db) for persistent Admin Password Lock, Operators & Community data
+[[kv_namespaces]]
+binding = "HOR_KATHA_KV"
+id = "526ae598b2364677b9ae1af663d0bbc3"

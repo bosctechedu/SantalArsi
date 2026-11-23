@@ -38,7 +38,7 @@ interface HeaderProps {
   onToggleSidebar: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({
+export const Header: React.FC<HeaderProps> = React.memo(({
   activeTab,
   viewMode,
   onViewModeChange,
@@ -71,7 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header data-edit-region="global_header" className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs print:hidden">
+    <header data-edit-region="global_header" className="sticky top-0 z-40 bg-white border-b border-slate-200/90 shadow-2xs print:hidden">
       {/* Row 1: Brand + View Switcher + Top-Right Icon-Only Home Button */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
         {/* Left: Sidebar Toggle & Brand */}
@@ -102,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="text-sm sm:text-base font-bold text-slate-900 tracking-tight whitespace-nowrap">
-                  Hor Katha Suite
+                  Santal आ़रसी
                 </span>
                 <span className="text-[9px] font-bold tracking-wider uppercase text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded whitespace-nowrap">
                   v3.7.4 Pro
@@ -289,4 +289,4 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
     </header>
   );
-};
+});

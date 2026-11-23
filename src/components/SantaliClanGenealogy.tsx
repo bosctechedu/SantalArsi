@@ -273,7 +273,7 @@ export const SantaliClanGenealogy: React.FC = () => {
     ctx.font = 'bold 18px system-ui, sans-serif';
     ctx.fillStyle = '#78350f';
     ctx.fillText(
-      'हासा आर भाषा बांचाव रेगे अबोवाक जियान • होड़ काथा डिजिटल सुइट (Hor Katha Suite)',
+      'हासा आर भाषा बांचाव रेगे अबोवाक जियान • Santal आ़रसी',
       width / 2,
       730
     );

@@ -408,6 +408,16 @@ const APP_MODULES: SearchItem[] = [
     description: 'पारंपरिक संताली ग्राम स्वशासन और कुलही दुरुप न्याय प्रणाली का सचित्र ज्ञानकोश।'
   },
   {
+    id: 'mod-grammar-course',
+    type: 'module',
+    title: 'संपूर्ण संताली व्याकरण पाठ्यक्रम एवं अभ्यास क्विज़ (20 Chapters + 60 MCQs)',
+    subtitle: 'पारसी, ध्वनि, रुद्ध व्यंजन, विराम चिह्न, मध्यसर्ग, संज्ञा, लिंग, ३ वचन, कारक, सर्वनाम, काल, वाच्य, विलोम, कुदुम, पत्र व निबंध',
+    targetTab: 'santali_grammar_course',
+    icon: GraduationCap,
+    category: 'Education & Linguistics',
+    description: '२० मौलिक अध्यायों का संपूर्ण संताली व्याकरण कोर्स, देवनागरी-ओल चिकी-रोमन उदाहरण, ऑडियो उच्चारण और ६० प्रश्नों का नो-रिपीट अभ्यास क्विज़।'
+  },
+  {
     id: 'mod-grammar',
     type: 'module',
     title: 'संताली व्याकरण व वाक्य निर्माता (Grammar & Sentence Lab)',
@@ -2519,7 +2529,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
           </div>
 
           <span className="hidden sm:inline font-semibold text-amber-800">
-            Hor Katha Suite · Global Spotlight
+            Santal आ़रसी · Global Spotlight
           </span>
         </div>
       </div>

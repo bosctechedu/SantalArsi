@@ -124,7 +124,7 @@ export const SantaliWeeklyBulletinMaker: React.FC = () => {
     ctx.fillStyle = '#64748B';
     ctx.font = '600 18px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Hor Katha Suite · सामुदायिक व विद्यालय साप्ताहिक समाचार-पत्र', 600, 1475);
+    ctx.fillText('Santal आ़रसी · सामुदायिक व विद्यालय साप्ताहिक समाचार-पत्र', 600, 1475);
 
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/png');

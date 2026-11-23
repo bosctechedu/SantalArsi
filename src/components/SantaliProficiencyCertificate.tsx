@@ -706,7 +706,7 @@ export const SantaliProficiencyCertificate: React.FC = () => {
               {/* Certificate Header */}
               <div className="space-y-1">
                 <p className="text-xs font-extrabold tracking-widest text-amber-800 uppercase">
-                  HOR KATHA SUITE • संताली देवनागरी मंच
+                  Santal आ़रसी • संताली देवनागरी मंच
                 </p>
                 <h2 className="text-2xl sm:text-4xl font-black text-slate-900 font-serif tracking-tight">
                   संथाली भाषा मित्र एवं संस्कृति गौरव प्रमाणपत्र
@@ -741,7 +741,7 @@ export const SantaliProficiencyCertificate: React.FC = () => {
                 </div>
 
                 <div className="text-right">
-                  <p className="font-serif italic font-black text-amber-900 text-sm">Hor Katha Team</p>
+                  <p className="font-serif italic font-black text-amber-900 text-sm">Santal आ़रसी Team</p>
                   <p className="text-[10px] text-slate-600 uppercase font-bold">अकादमिक परिषद्</p>
                   <p className="text-[10px] text-slate-500">HorKathaSantali.ai.studio</p>
                 </div>

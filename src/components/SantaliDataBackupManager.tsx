@@ -67,7 +67,7 @@ export const SantaliDataBackupManager: React.FC = () => {
         [
           JSON.stringify(
             {
-              app: 'Hor Katha Suite',
+              app: 'Santal आ़रसी',
               exportedAt: new Date().toISOString(),
               data: payload
             },

@@ -5,6 +5,7 @@ import {
 } from './examQuestionsIndia2026';
 import { JHARKHAND_COMPETITIVE_QUESTIONS } from './examQuestionsJharkhand2026';
 import { EXTRA_COMPETITIVE_QUESTIONS_2026 } from './examQuestionsExtra2026';
+import { EXTRA_COMPETITIVE_QUESTIONS_PART2_2026 } from './examQuestionsBank2026Part2';
 
 export type ExamRegion = 'india' | 'jharkhand';
 
@@ -774,55 +775,99 @@ export const COMPETITIVE_EXAMS_2026: CompetitiveExam2026[] = [
   }
 ];
 
-export const ALL_COMPETITIVE_QUESTIONS_2026: CompetitiveQuestion[] = [
+const RAW_COMPETITIVE_QUESTIONS_2026: CompetitiveQuestion[] = [
   ...INDIA_COMPETITIVE_QUESTIONS,
   ...JHARKHAND_COMPETITIVE_QUESTIONS,
-  ...EXTRA_COMPETITIVE_QUESTIONS_2026
+  ...EXTRA_COMPETITIVE_QUESTIONS_2026,
+  ...EXTRA_COMPETITIVE_QUESTIONS_PART2_2026
 ];
 
+// Deduplicate by both ID and normalized question stem so zero repeats exist in the master bank
+export const ALL_COMPETITIVE_QUESTIONS_2026: CompetitiveQuestion[] = (() => {
+  const seenIds = new Set<string>();
+  const seenStems = new Set<string>();
+  const clean: CompetitiveQuestion[] = [];
+  for (const q of RAW_COMPETITIVE_QUESTIONS_2026) {
+    const stem = q.question.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (seenIds.has(q.id) || seenStems.has(stem)) continue;
+    seenIds.add(q.id);
+    seenStems.add(stem);
+    clean.push(q);
+  }
+  return clean;
+})();
+
+function shuffleList<T>(arr: T[]): T[] {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 /**
- * Returns deterministic, zero-duplicate question set for any Exam + PaperSlot (pyq_2023/2024/2025/practice_set_1/2).
- * Prioritizes exact examIds match in that paperSlot first, then fills to targetSize (default 10) from same region & paperSlot so every paper preview is rich and authentic.
+ * Returns zero-duplicate, strictly non-repeating question set for any Exam + PaperSlot.
+ * When `excludeIds` is supplied, questions already present in `excludeIds` are NEVER returned.
+ * Priority tiers:
+ *   1. Exact examId + exact paperSlot
+ *   2. Exact examId (any paperSlot)
+ *   3. Same region + exact paperSlot
+ *   4. Same region (any paperSlot)
+ *   5. Any remaining unseen competitive question
  */
 export function getQuestionsForExamPaper(
   examId: string,
   paperSlot: ExamPaperSlot,
-  targetSize = 10
+  targetSize = 10,
+  excludeIds?: Set<string>,
+  randomizeOrder = false
 ): CompetitiveQuestion[] {
   const exam = COMPETITIVE_EXAMS_2026.find((e) => e.id === examId);
-  const directMatches = ALL_COMPETITIVE_QUESTIONS_2026.filter(
-    (q) => q.paperSlot === paperSlot && q.examIds.includes(examId)
+  const isJhk = exam?.region === 'jharkhand';
+  const isExcluded = (q: CompetitiveQuestion) => Boolean(excludeIds && excludeIds.has(q.id));
+  const isSameRegion = (q: CompetitiveQuestion) =>
+    isJhk
+      ? q.id.startsWith('jhk') || q.subject === 'jharkhand_special' || q.subject === 'santali_language'
+      : q.id.startsWith('ind') || q.id.startsWith('ext_');
+
+  const picked: CompetitiveQuestion[] = [];
+  const seen = new Set<string>();
+
+  const takeFrom = (candidates: CompetitiveQuestion[]) => {
+    const list = randomizeOrder ? shuffleList(candidates) : candidates;
+    for (const q of list) {
+      if (picked.length >= targetSize) break;
+      if (seen.has(q.id) || isExcluded(q)) continue;
+      seen.add(q.id);
+      picked.push(q);
+    }
+  };
+
+  // Tier 1: exact exam + exact paper slot
+  takeFrom(
+    ALL_COMPETITIVE_QUESTIONS_2026.filter(
+      (q) => q.paperSlot === paperSlot && q.examIds.includes(examId)
+    )
   );
-
-  const seen = new Set(directMatches.map((q) => q.id));
-  const result = [...directMatches];
-
-  if (result.length < targetSize) {
-    // Secondary fill from same paperSlot matching same region or general aptitude/GS
-    const regionalPrefix = exam?.region === 'jharkhand' ? 'jhk_' : 'ind_';
-    const secondary = ALL_COMPETITIVE_QUESTIONS_2026.filter(
-      (q) =>
-        !seen.has(q.id) &&
-        q.paperSlot === paperSlot &&
-        (q.id.startsWith(regionalPrefix) || q.id.startsWith('ext_'))
+  // Tier 2: exact exam across other slots
+  if (picked.length < targetSize) {
+    takeFrom(ALL_COMPETITIVE_QUESTIONS_2026.filter((q) => q.examIds.includes(examId)));
+  }
+  // Tier 3: same region + same paper slot
+  if (picked.length < targetSize) {
+    takeFrom(
+      ALL_COMPETITIVE_QUESTIONS_2026.filter((q) => q.paperSlot === paperSlot && isSameRegion(q))
     );
-    for (const q of secondary) {
-      if (result.length >= targetSize) break;
-      seen.add(q.id);
-      result.push(q);
-    }
+  }
+  // Tier 4: same region across any slot
+  if (picked.length < targetSize) {
+    takeFrom(ALL_COMPETITIVE_QUESTIONS_2026.filter((q) => isSameRegion(q)));
+  }
+  // Tier 5: any remaining unseen competitive question
+  if (picked.length < targetSize) {
+    takeFrom(ALL_COMPETITIVE_QUESTIONS_2026);
   }
 
-  if (result.length < targetSize) {
-    const anySlot = ALL_COMPETITIVE_QUESTIONS_2026.filter(
-      (q) => !seen.has(q.id) && q.paperSlot === paperSlot
-    );
-    for (const q of anySlot) {
-      if (result.length >= targetSize) break;
-      seen.add(q.id);
-      result.push(q);
-    }
-  }
-
-  return result;
+  return picked;
 }

@@ -78,7 +78,7 @@ export const LegalPoliciesModal: React.FC<LegalPoliciesModalProps> = ({
         {
           title: '3. Educational & Non-Commercial Preservation Intent',
           content:
-            'Hor Katha Suite is designed solely for public educational, linguistic research, and cultural preservation purposes. All features are provided 100% free of charge for community learning.'
+            'Santal आ़रसी is designed solely for public educational, linguistic research, and cultural preservation purposes. All features are provided 100% free of charge for community learning.'
         },
         {
           title: '4. Cultural Sanctity & Community Feedback',
@@ -95,7 +95,7 @@ export const LegalPoliciesModal: React.FC<LegalPoliciesModalProps> = ({
       hindiHeadline: 'गोपनीयता नीति एवं डेटा संप्रभुता',
       versionDate: 'October 2026 (v3.7.4 Pro Ultra)',
       leadParagraph:
-        'We believe in strict digital privacy. Hor Katha Suite collects zero personal identifiers, uses zero tracking trackers, and operates with full local data sovereignty.',
+        'We believe in strict digital privacy. Santal आ़रसी collects zero personal identifiers, uses zero tracking trackers, and operates with full local data sovereignty.',
       sections: [
         {
           title: '1. Zero Personal Data Collection',
@@ -127,7 +127,7 @@ export const LegalPoliciesModal: React.FC<LegalPoliciesModalProps> = ({
       hindiHeadline: 'सेवा की शर्तें एवं उपयोग नियमावली',
       versionDate: 'October 2026 (v3.7.4 Pro Ultra)',
       leadParagraph:
-        'These terms govern the use of Hor Katha Suite as an open cultural asset for educators, learners, researchers, and community organizations worldwide.',
+        'These terms govern the use of Santal आ़रसी as an open cultural asset for educators, learners, researchers, and community organizations worldwide.',
       sections: [
         {
           title: '1. Non-Commercial Public License',
@@ -147,7 +147,7 @@ export const LegalPoliciesModal: React.FC<LegalPoliciesModalProps> = ({
         {
           title: '4. Attribution to BOSC Tech & Edu',
           content:
-            'When citing data or incorporating dictionaries into scholarly publications or regional curriculum guides, appropriate credit to Hor Katha Suite and BOSC Tech & Edu is appreciated.'
+            'When citing data or incorporating dictionaries into scholarly publications or regional curriculum guides, appropriate credit to Santal आ़रसी and BOSC Tech & Edu is appreciated.'
         }
       ]
     },
@@ -159,7 +159,7 @@ export const LegalPoliciesModal: React.FC<LegalPoliciesModalProps> = ({
       hindiHeadline: 'कुकी नीति एवं स्थानीय संग्रहण',
       versionDate: 'October 2026 (v3.7.4 Pro Ultra)',
       leadParagraph:
-        'Hor Katha Suite strictly adheres to privacy-by-design principles. We do not use third-party advertising cookies or cross-site tracking beacons.',
+        'Santal आ़रसी strictly adheres to privacy-by-design principles. We do not use third-party advertising cookies or cross-site tracking beacons.',
       sections: [
         {
           title: '1. Essential Functional Storage Only',
@@ -206,7 +206,7 @@ export const LegalPoliciesModal: React.FC<LegalPoliciesModalProps> = ({
         {
           title: '3. Inalienable Collective Tribal Ownership',
           content:
-            'No commercial entity or individual may copyright or patent the phonetic sounds, vocabulary, or cultural literature of the Santal people. Hor Katha Suite operates as a steward of this public indigenous heritage.'
+            'No commercial entity or individual may copyright or patent the phonetic sounds, vocabulary, or cultural literature of the Santal people. Santal आ़रसी operates as a steward of this public indigenous heritage.'
         },
         {
           title: '4. Digital Archival of Oral Lore',
@@ -223,7 +223,7 @@ export const LegalPoliciesModal: React.FC<LegalPoliciesModalProps> = ({
       hindiHeadline: 'सार्वभौमिक पहुंच एवं समावेशिता',
       versionDate: 'October 2026 (v3.7.4 Pro Ultra)',
       leadParagraph:
-        'Hor Katha Suite is architected to ensure barrier-free access for elders, rural learners, visually impaired individuals, and first-time smartphone users.',
+        'Santal आ़रसी is architected to ensure barrier-free access for elders, rural learners, visually impaired individuals, and first-time smartphone users.',
       sections: [
         {
           title: '1. WCAG 2.1 AA Visual Contrast Standards',
@@ -267,7 +267,7 @@ export const LegalPoliciesModal: React.FC<LegalPoliciesModalProps> = ({
             </div>
             <div>
               <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-widest leading-none">
-                HOR KATHA LEGAL &amp; GOVERNANCE · v3.7.4 Pro Ultra
+                Santal आ़रसी LEGAL &amp; GOVERNANCE · v3.7.4 Pro Ultra
               </p>
               <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight mt-1">
                 Official Compliance &amp; Policies

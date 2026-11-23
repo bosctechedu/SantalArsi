@@ -157,7 +157,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
 
     ctx.fillStyle = '#92400E';
     ctx.font = 'bold 26px sans-serif';
-    ctx.fillText('आज का संताली शब्द · Word of the Day · Hor Katha Suite', 68, 92);
+    ctx.fillText('आज का संताली शब्द · Word of the Day · Santal आ़रसी', 68, 92);
 
     ctx.fillStyle = '#0F172A';
     ctx.font = 'bold 68px sans-serif';
@@ -194,7 +194,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
 
   const handleCopyWordOfDayWhatsApp = () => {
     if (!wordOfTheDay) return;
-    const msg = `*आज का संताली शब्द (Hor Katha)*\n\n*शब्द:* ${wordOfTheDay.wordDevanagari}\n*ओल चिकी:* ${toOlChikiAuto(wordOfTheDay.wordDevanagari)}\n*उच्चारण:* ${wordOfTheDay.wordRoman}\n*हिन्दी अर्थ:* ${wordOfTheDay.meaningHindi}\n*English:* ${wordOfTheDay.meaningEnglish}\n\nसीखें: ${window.location.origin}`;
+    const msg = `*आज का संताली शब्द (Santal आ़रसी)*\n\n*शब्द:* ${wordOfTheDay.wordDevanagari}\n*ओल चिकी:* ${toOlChikiAuto(wordOfTheDay.wordDevanagari)}\n*उच्चारण:* ${wordOfTheDay.wordRoman}\n*हिन्दी अर्थ:* ${wordOfTheDay.meaningHindi}\n*English:* ${wordOfTheDay.meaningEnglish}\n\nसीखें: ${window.location.origin}`;
     navigator.clipboard.writeText(msg).catch(() => {});
     setWotdCopied(true);
     setTimeout(() => setWotdCopied(false), 2000);
@@ -266,6 +266,15 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
       icon: Languages,
       gradient: 'from-rose-500 to-pink-600',
       actionText: 'Translate',
+      category: 'language'
+    },
+    {
+      id: 'santali_grammar_course',
+      title: 'संपूर्ण संताली व्याकरण कोर्स व क्विज़ (20 अध्याय)',
+      subtitle: 'ध्वनि, रुद्ध व्यंजन, ३ वचन, कारक, सर्वनाम, काल, वाच्य, पत्र व निबंध + 60 अभ्यास प्रश्न',
+      icon: GraduationCap,
+      gradient: 'from-teal-700 to-emerald-800',
+      actionText: 'Start Course',
       category: 'language'
     },
     {
@@ -2160,7 +2169,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
               {/* Main Welcome Heading */}
               <div>
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-amber-950 tracking-tight leading-tight">
-                  Johar! Welcome to Hor Katha Suite
+                  Johar! Welcome to Santal आ़रसी
                 </h1>
                 <p className="text-xs sm:text-sm font-semibold text-amber-900/90 mt-1.5 leading-relaxed">
                   Santali Language &amp; Learning Platform · BOSC Tech &amp; Edu
@@ -2314,13 +2323,13 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
               <span>Top 10 Features</span>
             </span>
             <h2 className="text-base sm:text-lg font-extrabold text-slate-900 mt-1">
-              होड़ काथा सूट की शीर्ष १० प्रमुख विशेषताएँ (Top 10 Platform Features)
+              Santal आ़रसी की शीर्ष १० प्रमुख विशेषताएँ (Top 10 Platform Features)
             </h2>
           </div>
           <button
             onClick={() =>
               handleSpeak(
-                'होड़ काथा की शीर्ष १० विशेषताएँ: ५०,०००+ शब्दकोश, वर्चुअल कीबोर्ड, रियल सीबीटी परीक्षा हब, सर्व-भाषा ऑडियो रीडर, त्रि-लिपि कनवर्टर, संताली अनुवादक, नृत्य अखड़ा व वाद्ययंत्र ऑर्केस्ट्रा, मांझी परगना न्याय, गाँव का मानचित्र, और इंटरैक्टिव शैक्षिक खेल।'
+                'Santal आ़रसी की शीर्ष १० विशेषताएँ: ५०,०००+ शब्दकोश, वर्चुअल कीबोर्ड, रियल सीबीटी परीक्षा हब, सर्व-भाषा ऑडियो रीडर, त्रि-लिपि कनवर्टर, संताली अनुवादक, नृत्य अखड़ा व वाद्ययंत्र ऑर्केस्ट्रा, मांझी परगना न्याय, गाँव का मानचित्र, और इंटरैक्टिव शैक्षिक खेल।'
               )
             }
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold cursor-pointer self-start sm:self-auto shrink-0"
@@ -2726,7 +2735,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
                 "Santali bhasha, amag gorob, jioom m or katna."
               </p>
               <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                — Hor Katha Suite · BOSC Tech &amp; Edu
+                — Santal आ़रसी · BOSC Tech &amp; Edu
               </p>
             </div>
             <div className="w-full flex items-center justify-center">

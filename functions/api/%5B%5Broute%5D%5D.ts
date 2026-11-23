@@ -238,7 +238,7 @@ async function dispatchAdminOtpEmail(opts: {
   const text = [
     'Johar!',
     '',
-    `Your Super Admin Password Verification OTP for Santal Arsi (Hor Katha Suite) is: ${otp}`,
+    `Your Super Admin Password Verification OTP for Santal आ़रसी is: ${otp}`,
     '',
     `This code is valid for ${expiresMinutes} minutes and applies strictly to ${to}.`,
     'If you did not request this password change, please ignore this email.'
@@ -1006,8 +1006,7 @@ export async function onRequest(context: PagesEventContext): Promise<Response> {
       emailOtpConfigured: provider !== 'none',
       provider,
       targetEmail: SUPER_ADMIN_EMAIL,
-      hasCustomServerPassword: Boolean(store.adminAuth?.passwordHash),
-      storagePersistent: Boolean(env.HOR_KATHA_KV)
+      hasCustomServerPassword: Boolean(store.adminAuth?.passwordHash)
     });
   }
 
@@ -1045,16 +1044,6 @@ export async function onRequest(context: PagesEventContext): Promise<Response> {
     }
 
     const store = await loadStore(env);
-    if (store.adminAuth?.passwordHash && store.adminAuth?.passwordSalt) {
-      return jsonResponse(
-        {
-          error:
-            'Admin पासवर्ड पहले से सेट और लॉक है। जब तक आप Admin Settings से वर्तमान पासवर्ड Delete नहीं करते, दोबारा पासवर्ड रीसेट नहीं होगा।',
-          passwordLocked: true
-        },
-        423
-      );
-    }
     const now = Date.now();
     const lastSent = store.adminAuth?.lastOtpSentAt || 0;
     const elapsedMs = now - lastSent;
@@ -1145,16 +1134,6 @@ export async function onRequest(context: PagesEventContext): Promise<Response> {
 
     const store = await loadStore(env);
     const auth = store.adminAuth || {};
-    if (auth.passwordHash && auth.passwordSalt) {
-      return jsonResponse(
-        {
-          error:
-            'Admin पासवर्ड पहले से सेट और लॉक है। नया पासवर्ड सेट करने के लिए पहले वर्तमान पासवर्ड Delete करें।',
-          passwordLocked: true
-        },
-        423
-      );
-    }
 
     let activeHash = auth.otpHash;
     let activeSalt = auth.otpSalt;
@@ -1264,16 +1243,6 @@ export async function onRequest(context: PagesEventContext): Promise<Response> {
       }
 
       const store = await loadStore(env);
-      if (store.adminAuth?.passwordHash && store.adminAuth?.passwordSalt) {
-        return jsonResponse(
-          {
-            error:
-              'Admin पासवर्ड पहले से सेट और लॉक है। नया पासवर्ड सेट करने के लिए पहले वर्तमान पासवर्ड Delete करें।',
-            passwordLocked: true
-          },
-          423
-        );
-      }
       const passDigest = await hashSecretWithSalt(newPassword);
       store.adminAuth = {
         passwordHash: passDigest.hash,
@@ -1311,7 +1280,7 @@ export async function onRequest(context: PagesEventContext): Promise<Response> {
     if (auth?.passwordHash && auth?.passwordSalt) {
       const candidate = await hashSecretWithSalt(cleanPassword, auth.passwordSalt);
       if (!constantTimeEqual(candidate.hash, auth.passwordHash)) {
-        return jsonResponse({ error: 'अमान्य Super Admin पासवर्ड।', hasServerPassword: true }, 401);
+        return jsonResponse({ error: 'अमान्य Super Admin पासवर्ड।' }, 401);
       }
       return jsonResponse({
         success: true,
@@ -1323,7 +1292,7 @@ export async function onRequest(context: PagesEventContext): Promise<Response> {
 
     const defaultPass = (env.DEFAULT_ADMIN_PASSWORD || 'admin123').trim();
     if (!constantTimeEqual(cleanPassword, defaultPass)) {
-      return jsonResponse({ error: 'अमान्य Super Admin पासवर्ड।', hasServerPassword: false }, 401);
+      return jsonResponse({ error: 'अमान्य Super Admin पासवर्ड।' }, 401);
     }
 
     return jsonResponse({
@@ -1331,24 +1300,6 @@ export async function onRequest(context: PagesEventContext): Promise<Response> {
       role: 'super_admin',
       email: SUPER_ADMIN_EMAIL,
       hasServerPassword: false
-    });
-  }
-
-  // STRICTLY Super Admin (bosctechedu@gmail.com): Delete / Clear Admin Password to unlock future setup
-  if (path === '/api/admin/delete-password' && method === 'POST') {
-    if (!isSuperAdminReq(request)) {
-      return jsonResponse(
-        { error: `केवल मुख्य एडमिन (${SUPER_ADMIN_EMAIL}) ही Admin पासवर्ड Delete कर सकते हैं।` },
-        403
-      );
-    }
-    const store = await loadStore(env);
-    store.adminAuth = { updatedAt: Date.now() };
-    await saveStore(env, store);
-    return jsonResponse({
-      success: true,
-      hasCustomServerPassword: false,
-      message: 'Admin पासवर्ड सफलतापूर्वक Delete कर दिया गया है। अब आप Email OTP से नया पासवर्ड सेट कर सकते हैं।'
     });
   }
 

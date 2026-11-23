@@ -117,7 +117,7 @@ export const SantaliSocialCardStudio: React.FC = () => {
   const [customDevanagari, setCustomDevanagari] = useState('आबो रोड़, आबो उपरुम, आबो गोरोब।');
   const [customRoman, setCustomRoman] = useState('Abo Ror, Abo Uprum, Abo Gorob.');
   const [customHindi, setCustomHindi] = useState('हमारी भाषा, हमारी पहचान, हमारा स्वाभिमान।');
-  const [customAuthor, setCustomAuthor] = useState('होड़ काथा संताली');
+  const [customAuthor, setCustomAuthor] = useState('Santal आ़रसी संताली');
 
   // Styling options (Over 100+ design presets)
   const [theme, setTheme] = useState<CardThemeId>('terracotta');
@@ -364,7 +364,7 @@ export const SantaliSocialCardStudio: React.FC = () => {
     ctx.fillStyle = primaryColor;
     ctx.letterSpacing = '3px';
     ctx.textAlign = 'center';
-    ctx.fillText('HOR KATHA · आदिम संताली दर्शन', centerX, currentY);
+    ctx.fillText('Santal आ़रसी · आदिम संताली दर्शन', centerX, currentY);
     currentY += 55;
 
     // Opening Quote Symbol
@@ -447,7 +447,7 @@ export const SantaliSocialCardStudio: React.FC = () => {
       const footerY = height - margin - 35;
       ctx.font = '600 20px sans-serif';
       ctx.fillStyle = isLightBg ? '#78716C' : 'rgba(254, 243, 199, 0.7)';
-      ctx.fillText('होड़ काथा · www.horkatha.org · हमारी भाषा, हमारा स्वाभिमान', centerX, footerY);
+      ctx.fillText('Santal आ़रसी · santalarsi.pages.dev · हमारी भाषा, हमारा स्वाभिमान', centerX, footerY);
     }
   };
 
@@ -478,12 +478,12 @@ export const SantaliSocialCardStudio: React.FC = () => {
     const url = canvas.toDataURL('image/png');
     const a = document.createElement('a');
     a.href = url;
-    a.download = `HorKatha_Santali_Poster_${Date.now()}.png`;
+    a.download = `SantalArsi_Poster_${Date.now()}.png`;
     a.click();
   };
 
   const handleCopyText = () => {
-    const shareText = `🌿 *${activeDev}*\n_${activeRoman}_\n\n📖 भावार्थ: ${activeHindi}\n\n— *${activeAuthor}*\n✨ साझा करें: होड़ काथा (संताली महामंच)`;
+    const shareText = `🌿 *${activeDev}*\n_${activeRoman}_\n\n📖 भावार्थ: ${activeHindi}\n\n— *${activeAuthor}*\n✨ साझा करें: Santal आ़रसी (संताली महामंच)`;
     navigator.clipboard.writeText(shareText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
@@ -491,7 +491,7 @@ export const SantaliSocialCardStudio: React.FC = () => {
 
   const handleShareWhatsApp = () => {
     const shareText = encodeURIComponent(
-      `🌿 *${activeDev}*\n_${activeRoman}_\n\n📖 भावार्थ: ${activeHindi}\n\n— *${activeAuthor}*\n\n✨ होड़ काथा · संताली महामंच से साभार (www.horkatha.org)`
+      `🌿 *${activeDev}*\n_${activeRoman}_\n\n📖 भावार्थ: ${activeHindi}\n\n— *${activeAuthor}*\n\n✨ Santal आ़रसी · संताली महामंच से साभार (santalarsi.pages.dev)`
     );
     window.open(`https://api.whatsapp.com/send?text=${shareText}`, '_blank');
     setShareSuccess(true);
@@ -728,7 +728,7 @@ export const SantaliSocialCardStudio: React.FC = () => {
                     type="text"
                     value={customAuthor}
                     onChange={(e) => setCustomAuthor(e.target.value)}
-                    placeholder="उदा. होड़ काथा संताली"
+                    placeholder="उदा. Santal आ़रसी संताली"
                     className="w-full p-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>

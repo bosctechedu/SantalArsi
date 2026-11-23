@@ -238,7 +238,7 @@ async function dispatchAdminOtpEmail(opts: {
   const text = [
     'Johar!',
     '',
-    `Your Super Admin Password Verification OTP for Santal Arsi (Hor Katha Suite) is: ${otp}`,
+    `Your Super Admin Password Verification OTP for Santal आ़रसी is: ${otp}`,
     '',
     `This code is valid for ${expiresMinutes} minutes and applies strictly to ${to}.`,
     'If you did not request this password change, please ignore this email.'

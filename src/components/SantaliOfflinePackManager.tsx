@@ -105,7 +105,7 @@ export const SantaliOfflinePackManager: React.FC = () => {
   const handleDownloadOfflineJsonPack = () => {
     const bundle = {
       exportedAt: new Date().toISOString(),
-      suite: 'Hor Katha Suite · Rural Offline Study Pack',
+      suite: 'Santal आ़रसी · Rural Offline Study Pack',
       totalWords: words.length,
       olChikiSample: toOlChikiAuto('जोहार संताली'),
       words: words.slice(0, 5000).map((w) => ({

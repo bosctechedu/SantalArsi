@@ -252,14 +252,14 @@ export const SantaliGreetingMaker: React.FC = () => {
   };
 
   const handleCopyText = () => {
-    const fullText = `🌺 *${selectedTemplate.festivalDev}* 🌺\n\nप्रिय *${recipientName}*,\n\n${activeMessageDev}\n\n_${selectedTemplate.defaultMessageHindi}_\n\nसादर सप्रेम,\n*${senderName}*\n(होर कथा सुइट द्वारा प्रेषित)`;
+    const fullText = `🌺 *${selectedTemplate.festivalDev}* 🌺\n\nप्रिय *${recipientName}*,\n\n${activeMessageDev}\n\n_${selectedTemplate.defaultMessageHindi}_\n\nसादर सप्रेम,\n*${senderName}*\n(Santal आ़रसी द्वारा प्रेषित)`;
     navigator.clipboard.writeText(fullText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleWhatsAppShare = () => {
-    const fullText = `🌺 *${selectedTemplate.festivalDev}* 🌺\n\nप्रिय *${recipientName}*,\n\n${activeMessageDev}\n\n_${selectedTemplate.defaultMessageHindi}_\n\nसादर सप्रेम,\n*${senderName}*\n(Hor Katha Suite)`;
+    const fullText = `🌺 *${selectedTemplate.festivalDev}* 🌺\n\nप्रिय *${recipientName}*,\n\n${activeMessageDev}\n\n_${selectedTemplate.defaultMessageHindi}_\n\nसादर सप्रेम,\n*${senderName}*\n(Santal आ़रसी)`;
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(fullText)}`;
     window.open(url, '_blank');
   };
@@ -339,7 +339,7 @@ export const SantaliGreetingMaker: React.FC = () => {
     // Branding Footer
     ctx.font = '18px system-ui, sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('होर काथा डिजिटल सुइट (Hor Katha Suite) • BOSC Tech & Edu', 600, 735);
+    ctx.fillText('Santal आ़रसी • BOSC Tech & Edu', 600, 735);
 
     // Download Trigger
     const link = document.createElement('a');
@@ -592,10 +592,10 @@ export const SantaliGreetingMaker: React.FC = () => {
 
               <div className="text-right">
                 <span className="text-[10px] font-semibold text-white/60 block">
-                  BOSC Hor Katha Suite
+                  BOSC Santal आ़रसी
                 </span>
                 <span className="text-[11px] font-bold text-white/90">
-                  होड़ कथा सुइट
+                  Santal आ़रसी
                 </span>
               </div>
             </div>

@@ -22,16 +22,40 @@ export default defineConfig(() => {
         ],
         manifest: {
           id: '/',
-          name: 'Hor Katha Suite — Santali Language & Heritage Platform',
-          short_name: 'Hor Katha',
+          name: 'Santal आ़रसी — Santali Language & Heritage Platform',
+          short_name: 'Santal आ़रसी',
           description:
             'Complete offline & online Santali language suite with 154 modules, 10,000+ dictionary, virtual keyboard, real CBT exams, and cultural archives by BOSC Tech & Edu.',
           theme_color: '#ffffff',
           background_color: '#f8fafc',
           display: 'standalone',
           orientation: 'any',
+          dir: 'ltr',
+          lang: 'hi',
           scope: '/',
           start_url: '/',
+          prefer_related_applications: false,
+          categories: ['education', 'books', 'reference'],
+          shortcuts: [
+            {
+              name: 'ऑल टेक्स्ट रीडर',
+              short_name: 'Text Reader',
+              url: '/?tab=universal_text_reader',
+              icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }]
+            },
+            {
+              name: 'संताली व्याकरण कोर्स',
+              short_name: 'Grammar',
+              url: '/?tab=santali_grammar_course',
+              icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }]
+            },
+            {
+              name: 'प्रतियोगी परीक्षा हब',
+              short_name: 'Exam Hub',
+              url: '/?tab=santali_exam_prep_jpsc',
+              icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }]
+            }
+          ],
           icons: [
             {
               src: '/pwa-192x192.png',
@@ -141,6 +165,16 @@ export default defineConfig(() => {
       rollupOptions: {
         output: {
           manualChunks(id) {
+            if (
+              id.includes('node_modules/react/') ||
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/scheduler/')
+            ) {
+              return 'vendor-react';
+            }
+            if (id.includes('node_modules/lucide-react/')) {
+              return 'vendor-icons';
+            }
             if (
               id.includes('src/data/lexiconGenerator') ||
               id.includes('src/data/santaliLexiconExpanded') ||

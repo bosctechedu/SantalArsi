@@ -3,7 +3,7 @@ setlocal EnableDelayedExpansion
 title Santalarsi - GitHub 1-Click Push System
 
 echo ========================================================
-echo   SANTALARSI (Hor Katha Suite) - GitHub Push System
+echo   Santal आ़रसी (santalarsi) - GitHub Push System
 echo   Target Live Site: https://santalarsi.pages.dev
 echo ========================================================
 echo.

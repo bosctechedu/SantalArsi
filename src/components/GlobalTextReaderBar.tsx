@@ -30,8 +30,13 @@ import {
   getActiveVoiceProfile,
   setActiveVoiceProfile,
   getAvailableSystemVoices,
-  getPreferredSystemVoiceName,
-  setPreferredSystemVoiceName,
+  getResolvedTrilingualVoices,
+  getPreferredHindiSantaliVoiceName,
+  setPreferredHindiSantaliVoiceName,
+  getPreferredEnglishVoiceName,
+  setPreferredEnglishVoiceName,
+  getUserSpeechRate,
+  setUserSpeechRate,
   ReadingLanguageMode,
   getReadingLanguageMode,
   setReadingLanguageMode
@@ -250,11 +255,12 @@ export const HeaderReaderControls: React.FC<{ activeTab: string }> = ({ activeTa
   const [readingLangMode, setReadingLangModeState] = useState<ReadingLanguageMode>(() =>
     getReadingLanguageMode()
   );
-  const [rate, setRate] = useState<number>(() => getActiveVoiceProfile().rate);
+  const [rate, setRate] = useState<number>(() => getUserSpeechRate());
   const [showVoiceDrawer, setShowVoiceDrawer] = useState(false);
   const [genderFilter, setGenderFilter] = useState<'all' | 'female' | 'male'>('all');
-  const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [selectedSysVoice, setSelectedSysVoice] = useState<string>(() => getPreferredSystemVoiceName());
+  const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>(() => getAvailableSystemVoices());
+  const [preferredHiVoice, setPreferredHiVoice] = useState<string>(() => getPreferredHindiSantaliVoiceName());
+  const [preferredEnVoice, setPreferredEnVoice] = useState<string>(() => getPreferredEnglishVoiceName());
   const [readingModeLabel, setReadingModeLabel] = useState<string>('3 भाषा वाचन');
   const [lastClickedSectionTitle, setLastClickedSectionTitle] = useState<string>('');
   const [lastClickedSectionText, setLastClickedSectionText] = useState<string>('');
@@ -288,8 +294,10 @@ export const HeaderReaderControls: React.FC<{ activeTab: string }> = ({ activeTa
     const syncVoice = () => {
       const prof = getActiveVoiceProfile();
       setActiveProfile(prof);
-      setRate(prof.rate);
-      setSelectedSysVoice(getPreferredSystemVoiceName());
+      setRate(getUserSpeechRate());
+      setPreferredHiVoice(getPreferredHindiSantaliVoiceName());
+      setPreferredEnVoice(getPreferredEnglishVoiceName());
+      setSystemVoices(getAvailableSystemVoices());
     };
     const syncLangMode = () => {
       setReadingLangModeState(getReadingLanguageMode());
@@ -349,29 +357,39 @@ export const HeaderReaderControls: React.FC<{ activeTab: string }> = ({ activeTa
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [showVoiceDrawer]);
 
-  // Track highlighted text selection cleanly so user can click to read selected passage
+  // Track highlighted text selection cleanly (debounced + guarded to prevent unnecessary re-renders)
   useEffect(() => {
+    let selTimer: ReturnType<typeof setTimeout> | null = null;
     const onSelectionChange = () => {
-      const txt = window.getSelection()?.toString().replace(/\s+/g, ' ').trim() || '';
-      setSelectedPageText(txt.length >= 2 ? txt : '');
+      if (selTimer) clearTimeout(selTimer);
+      selTimer = setTimeout(() => {
+        const txt = window.getSelection()?.toString().replace(/\s+/g, ' ').trim() || '';
+        const nextVal = txt.length >= 2 ? txt : '';
+        setSelectedPageText((prev) => (prev === nextVal ? prev : nextVal));
+      }, 180);
     };
     document.addEventListener('selectionchange', onSelectionChange);
-    return () => document.removeEventListener('selectionchange', onSelectionChange);
+    return () => {
+      if (selTimer) clearTimeout(selTimer);
+      document.removeEventListener('selectionchange', onSelectionChange);
+    };
   }, []);
 
   const activeScaleObj = FONT_SCALES.find((f) => f.id === fontScale) || FONT_SCALES[1];
 
-  // Throttled speaker button enhancer: labels icon-only <Volume2> buttons with "सुनें"
+  // Idle-scheduled speaker button enhancer scoped ONLY to workspace main (zero body-wide DOM jank)
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let idleId: number | null = null;
+    const root = document.querySelector('main[data-workspace-main="true"]') || document.querySelector('main');
+    if (!root) return;
 
     const enhanceSpeakerButtons = () => {
-      const buttons = document.querySelectorAll('button');
-      buttons.forEach((btn) => {
+      const icons = root.querySelectorAll('button svg.lucide-volume-2');
+      icons.forEach((svg) => {
+        const btn = svg.closest('button') as HTMLButtonElement | null;
+        if (!btn) return;
         if (btn.closest('[data-admin-ui="true"]') || btn.closest('[data-reader-bar="true"]')) return;
-        const hasVolumeIcon = btn.querySelector('svg.lucide-volume-2');
-        if (!hasVolumeIcon) return;
-
         if (btn.querySelector('[data-auto-speaker-word="true"]')) return;
         const visibleText = (btn.textContent || '').trim();
         if (!visibleText) {
@@ -391,21 +409,37 @@ export const HeaderReaderControls: React.FC<{ activeTab: string }> = ({ activeTa
       });
     };
 
-    enhanceSpeakerButtons();
-    const observer = new MutationObserver((mutations) => {
-      const relevant = mutations.some((m) => {
-        if (m.type !== 'childList' || m.addedNodes.length === 0) return false;
-        const targetEl = m.target as HTMLElement | null;
-        return !targetEl?.closest?.('[data-reader-bar="true"]');
-      });
-      if (!relevant) return;
+    const scheduleEnhance = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(enhanceSpeakerButtons, 200);
+      debounceTimer = setTimeout(() => {
+        const win = window as Window & {
+          requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        };
+        if (typeof win.requestIdleCallback === 'function') {
+          idleId = win.requestIdleCallback(enhanceSpeakerButtons, { timeout: 800 });
+        } else {
+          enhanceSpeakerButtons();
+        }
+      }, 450);
+    };
+
+    scheduleEnhance();
+    const observer = new MutationObserver((mutations) => {
+      for (let i = 0; i < mutations.length; i++) {
+        if (mutations[i].type === 'childList' && mutations[i].addedNodes.length > 0) {
+          scheduleEnhance();
+          break;
+        }
+      }
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(root, { childList: true, subtree: true });
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
+      const win = window as Window & { cancelIdleCallback?: (id: number) => void };
+      if (idleId !== null && typeof win.cancelIdleCallback === 'function') {
+        win.cancelIdleCallback(idleId);
+      }
       observer.disconnect();
     };
   }, [activeTab]);
@@ -614,7 +648,7 @@ export const HeaderReaderControls: React.FC<{ activeTab: string }> = ({ activeTa
     setReaderNotice(null);
     setReadingModeLabel(`3-भाषा परीक्षण: ${model.name.split(' ')[0]}`);
     speakWithFemaleVoice(
-      `Johar! Abo ror, abo uprum, abo gorob. नमस्कार! मैं ${model.name.split(' ')[0]} हूँ — हिन्दी, अंग्रेज़ी और संताली रोमन तीनों भाषाओं में पाठ वाचन तैयार है। Reading smoothly in Hindi, English, and Santali Roman.`,
+      `जोहार! संताली पारसी आ़डी नापाय काना, आबोन जोतो होड़ संताली बोन पढ़ावा। हिन्दी हमारी गौरवशाली भाषा है। And now I am reading clear, natural English smoothly for you.`,
       {
         autoDetectLanguage: true,
         readingLangMode: 'all',
@@ -623,6 +657,15 @@ export const HeaderReaderControls: React.FC<{ activeTab: string }> = ({ activeTa
       }
     );
   };
+
+  const resolvedVoices = getResolvedTrilingualVoices(activeProfile);
+  const hindiCandidateVoices = systemVoices.filter(
+    (v) =>
+      v.lang.toLowerCase().startsWith('hi') ||
+      v.lang.toLowerCase().includes('-in') ||
+      /hindi|swara|kalpana|lekha|aditi|madhur|hemant/i.test(v.name)
+  );
+  const englishCandidateVoices = systemVoices.filter((v) => v.lang.toLowerCase().startsWith('en'));
 
   const filteredModels = TOP_10_VOICE_MODELS.filter((m) =>
     genderFilter === 'all' ? true : m.gender === genderFilter
@@ -886,26 +929,65 @@ export const HeaderReaderControls: React.FC<{ activeTab: string }> = ({ activeTa
             })}
           </div>
 
-          <div className="pt-2 border-t border-slate-100 space-y-1 shrink-0 text-[11px]">
-            <label className="font-bold text-slate-700 block">
-              डिवाइस की मूल आवाज़ (System OS Voice — {systemVoices.length} उपलब्ध):
-            </label>
-            {systemVoices.length > 0 ? (
-              <select
-                value={selectedSysVoice}
-                onChange={(e) => {
-                  setSelectedSysVoice(e.target.value);
-                  setPreferredSystemVoiceName(e.target.value);
-                }}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs cursor-pointer"
+          <div className="pt-2 border-t border-slate-100 space-y-2 shrink-0 text-[11px]">
+            <div className="font-bold text-emerald-900 flex items-center justify-between gap-2">
+              <span>शुद्ध त्रि-भाषी वॉइस जोड़ी ({systemVoices.length} उपलब्ध):</span>
+              <button
+                type="button"
+                onClick={() => handleTestVoiceModel(activeProfile.gender === 'female' ? activeProfile : TOP_10_VOICE_MODELS[0])}
+                className="px-2 py-0.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] font-bold cursor-pointer"
               >
-                <option value="">स्वचालित श्रेष्ठ भारतीय/हिन्दी-अंग्रेज़ी स्वर (Auto Recommended)</option>
-                {systemVoices.map((v) => (
-                  <option key={`${v.name}_${v.lang}`} value={v.name}>
-                    {v.name} ({v.lang})
-                  </option>
-                ))}
-              </select>
+                3-भाषा टेस्ट
+              </button>
+            </div>
+            {systemVoices.length > 0 ? (
+              <div className="space-y-1.5">
+                <label className="block">
+                  <span className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                    हिन्दी + संताली आवाज़:
+                  </span>
+                  <select
+                    value={preferredHiVoice}
+                    onChange={(e) => {
+                      setPreferredHiVoice(e.target.value);
+                      setPreferredHindiSantaliVoiceName(e.target.value);
+                    }}
+                    className="w-full px-2 py-1.5 rounded-xl border border-emerald-300 bg-white text-slate-900 text-[11px] font-semibold cursor-pointer"
+                  >
+                    <option value="">
+                      ऑटो सर्वश्रेष्ठ ({resolvedVoices.hindiSantaliVoice?.name || 'System Hindi Voice'})
+                    </option>
+                    {(hindiCandidateVoices.length > 0 ? hindiCandidateVoices : systemVoices).map((v) => (
+                      <option key={`hdr-hi-${v.name}_${v.lang}`} value={v.name}>
+                        {v.name} ({v.lang})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="text-[10px] font-bold text-slate-600 block mb-0.5">
+                    English आवाज़:
+                  </span>
+                  <select
+                    value={preferredEnVoice}
+                    onChange={(e) => {
+                      setPreferredEnVoice(e.target.value);
+                      setPreferredEnglishVoiceName(e.target.value);
+                    }}
+                    className="w-full px-2 py-1.5 rounded-xl border border-emerald-300 bg-white text-slate-900 text-[11px] font-semibold cursor-pointer"
+                  >
+                    <option value="">
+                      ऑटो सर्वश्रेष्ठ ({resolvedVoices.englishVoice?.name || 'System English Voice'})
+                    </option>
+                    {(englishCandidateVoices.length > 0 ? englishCandidateVoices : systemVoices).map((v) => (
+                      <option key={`hdr-en-${v.name}_${v.lang}`} value={v.name}>
+                        {v.name} ({v.lang})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             ) : (
               <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
                 ब्राउज़र से TTS आवाज़ें लोड हो रही हैं — यदि कोई आवाज़ न दिखे तो अपने ब्राउज़र/OS की Text-to-Speech सेटिंग सक्रिय करें।
@@ -981,9 +1063,13 @@ export const HeaderReaderControls: React.FC<{ activeTab: string }> = ({ activeTa
           </div>
 
           <div className="flex items-center justify-between text-[10px] text-slate-600 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 gap-2">
-            <span className="flex items-center gap-1 font-semibold truncate">
+            <span className="flex items-center gap-1 font-semibold truncate" title={speech.activeSystemVoiceName || activeProfile.labelHi}>
               <UserCheck className="w-3 h-3 text-emerald-600 shrink-0" />
-              <span className="truncate">{activeProfile.labelHi}</span>
+              <span className="truncate">
+                {speech.activeSystemVoiceName
+                  ? `${activeProfile.name.split(' ')[0]} · ${speech.activeSystemVoiceName}`
+                  : activeProfile.labelHi}
+              </span>
             </span>
 
             <span className="font-bold text-sky-800 shrink-0">
@@ -997,6 +1083,7 @@ export const HeaderReaderControls: React.FC<{ activeTab: string }> = ({ activeTa
                 onChange={(e) => {
                   const newRate = Number(e.target.value);
                   setRate(newRate);
+                  setUserSpeechRate(newRate);
                   if (speech.fullText) {
                     speakWithFemaleVoice(speech.fullText, {
                       autoDetectLanguage: true,
@@ -1011,7 +1098,7 @@ export const HeaderReaderControls: React.FC<{ activeTab: string }> = ({ activeTa
               >
                 <option value={0.75}>0.75x</option>
                 <option value={0.85}>0.85x</option>
-                <option value={0.9}>0.9x</option>
+                <option value={0.92}>0.92x</option>
                 <option value={1.0}>1.0x</option>
                 <option value={1.15}>1.15x</option>
                 <option value={1.25}>1.25x</option>

@@ -146,7 +146,7 @@ export const SantaliEmergencyVoiceCards: React.FC = () => {
 
     ctx.fillStyle = '#64748B';
     ctx.font = '600 17px sans-serif';
-    ctx.fillText('Hor Katha Suite · ग्रामीण व यात्री सुरक्षा पॉकेट कार्ड', 40, 575);
+    ctx.fillText('Santal आ़रसी · ग्रामीण व यात्री सुरक्षा पॉकेट कार्ड', 40, 575);
 
     if (qrDataUrl) {
       await new Promise<void>((resolve) => {

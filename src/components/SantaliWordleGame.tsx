@@ -68,7 +68,7 @@ export const DEFAULT_PUZZLE_WORDS: WordPuzzle[] = [
     devanagari: 'काथा',
     meaningHindi: 'बात / वाणी / शब्द (होर कुरुम)',
     meaningEnglish: 'Words / Speech / Language',
-    hint: 'Found in the title of this app "Hor Katha"'
+    hint: 'Traditional Santali word for speech, words, and language (Santal आ़रसी)'
   }
 ];
 

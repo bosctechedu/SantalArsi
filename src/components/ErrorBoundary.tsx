@@ -21,7 +21,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Hor Katha Suite caught an error in ErrorBoundary:', error, errorInfo);
+    console.error('Santal आ़रसी caught an error in ErrorBoundary:', error, errorInfo);
   }
 
   private handleReset = async () => {
@@ -78,7 +78,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
             <div>
               <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                Hor Katha Suite Recovery
+                Santal आ़रसी Recovery
               </h2>
               <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
                 A temporary display issue occurred. Your saved dictionary words and data are safe.

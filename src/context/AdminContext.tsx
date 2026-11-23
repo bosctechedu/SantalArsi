@@ -310,7 +310,19 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [heroConfig, setHeroConfig] = useState<SiteHeroConfig>(() => {
-    return safeLoadFromStorage('hor_katha_hero_config', DEFAULT_HERO_CONFIG);
+    const loaded = safeLoadFromStorage('hor_katha_hero_config', DEFAULT_HERO_CONFIG);
+    const migrateBrand = (val?: string) =>
+      typeof val === 'string'
+        ? val
+            .replace(/Hor\s+Katha\s+Suite/gi, 'Santal आ़रसी')
+            .replace(/होड़\s+कथा\s+सुइट/g, 'Santal आ़रसी')
+            .replace(/होर\s+कथा\s+सुइट/g, 'Santal आ़रसी')
+        : val;
+    return {
+      ...loaded,
+      welcomeTitle: migrateBrand(loaded.welcomeTitle) || DEFAULT_HERO_CONFIG.welcomeTitle,
+      subTitle: migrateBrand(loaded.subTitle) || DEFAULT_HERO_CONFIG.subTitle,
+    };
   });
 
   const [officialFestivalOverrides, setOfficialFestivalOverrides] = useState<

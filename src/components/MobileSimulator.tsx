@@ -437,7 +437,7 @@ export const MobileSimulator: React.FC = () => {
                     />
                   </div>
                   <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                    Hor Katha Suite
+                    Santal आ़रसी
                   </h1>
                   <p className="text-xs text-slate-500 font-medium">
                     v3.7.4 Pro Ultra
@@ -538,7 +538,7 @@ export const MobileSimulator: React.FC = () => {
                       className="w-6 h-6 object-contain drop-shadow-xs"
                     />
                     <div>
-                      <h3 className="text-xs font-bold text-slate-900">Hor Katha Suite</h3>
+                      <h3 className="text-xs font-bold text-slate-900">Santal आ़रसी</h3>
                       <p className="text-[10px] text-slate-500">BOSC Tech &amp; Edu</p>
                     </div>
                   </div>
@@ -553,7 +553,7 @@ export const MobileSimulator: React.FC = () => {
                     Welcome
                   </span>
                   <h2 className="text-base font-bold text-amber-950 leading-tight">
-                    Johar! Welcome to <br />Hor Katha Suite
+                    Johar! Welcome to <br />Santal आ़रसी
                   </h2>
                   <p className="text-[11px] text-amber-900/80">
                     Santali Language &amp; Learning Platform

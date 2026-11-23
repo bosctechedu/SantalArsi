@@ -211,7 +211,7 @@ export const SantaliPocketBookletMaker: React.FC = () => {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-amber-500 pb-4">
             <div>
               <h2 className="text-xl font-black text-slate-900">{bookTitle}</h2>
-              <p className="text-xs text-slate-500">होड़ कथा सुइट · A4 प्रिंटेबल अध्ययन पुस्तिका व अभ्यास शीट</p>
+              <p className="text-xs text-slate-500">Santal आ़रसी · A4 प्रिंटेबल अध्ययन पुस्तिका व अभ्यास शीट</p>
             </div>
             <button
               onClick={() =>

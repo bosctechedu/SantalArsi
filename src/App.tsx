@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy, useCallback } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useCallback, startTransition } from 'react';
 import { ActiveDesktopTab, GlobalViewMode, ScriptType } from './types';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -194,6 +194,7 @@ const SantaliShgSavingsLedger = lazy(() => import('./components/SantaliShgSaving
 const SantaliMaternalChildHealth = lazy(() => import('./components/SantaliMaternalChildHealth').then(m => ({ default: m.SantaliMaternalChildHealth })));
 const SantaliReportCardMaker = lazy(() => import('./components/SantaliReportCardMaker').then(m => ({ default: m.SantaliReportCardMaker })));
 const SantaliLiteraryPioneers = lazy(() => import('./components/SantaliLiteraryPioneers').then(m => ({ default: m.SantaliLiteraryPioneers })));
+const SantaliGrammarCourse = lazy(() => import('./components/SantaliGrammarCourse').then(m => ({ default: m.SantaliGrammarCourse })));
 const AdminMasterStudio = lazy(() => import('./components/AdminMasterStudio').then(m => ({ default: m.AdminMasterStudio })));
 const MobileSimulator = lazy(() => import('./components/MobileSimulator').then(m => ({ default: m.MobileSimulator })));
 const PresentationView = lazy(() => import('./components/PresentationView').then(m => ({ default: m.PresentationView })));
@@ -245,6 +246,20 @@ function AppContent() {
   useEffect(() => {
     if (qrWordQuery) {
       setActiveTabState('dashboard');
+      return;
+    }
+    if (typeof window === 'undefined') return;
+    const tabParam = new URLSearchParams(window.location.search).get('tab');
+    const ALLOWED_SHORTCUT_TABS: ActiveDesktopTab[] = [
+      'universal_text_reader',
+      'santali_grammar_course',
+      'santali_exam_prep_jpsc',
+      'daily_quiz',
+      'dashboard',
+      'speaker'
+    ];
+    if (tabParam && ALLOWED_SHORTCUT_TABS.includes(tabParam as ActiveDesktopTab)) {
+      setActiveTabState(tabParam as ActiveDesktopTab);
     }
   }, [qrWordQuery]);
 
@@ -307,7 +322,14 @@ function AppContent() {
       openExternalSantaliKeyboard();
       return;
     }
-    setActiveTabState(tab);
+    startTransition(() => {
+      setActiveTabState(tab);
+    });
+    if (typeof window !== 'undefined') {
+      const mainEl = document.querySelector('main[data-workspace-main="true"]');
+      if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'auto' });
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
     if (tab !== 'home' && tab !== 'settings' && tab !== 'about') {
       setRecentTabs(prev => {
         const next = [tab, ...prev.filter(t => t !== tab && t !== 'keyboard')].slice(0, 5);
@@ -477,6 +499,7 @@ function AppContent() {
       case 'learn':
       case 'letter_templates':
       case 'grammar':
+      case 'santali_grammar_course':
       case 'roleplay_conversation':
       case 'teacher_worksheet_maker':
       case 'smart_essay_writer':
@@ -1646,6 +1669,10 @@ function AppContent() {
                 <SantaliLiteraryPioneers />
               )}
 
+              {activeTab === 'santali_grammar_course' && (
+                <SantaliGrammarCourse />
+              )}
+
               {/* Tab: Traditional Herbal Medicine & Ethnobotany */}
               {activeTab === 'herbal' && (
                 <SantaliHerbalRemedies />
@@ -1727,7 +1754,7 @@ function AppContent() {
                   <div>
                     <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                       <Settings className="w-5 h-5 text-sky-600" />
-                      <span>Hor Katha Suite Preferences</span>
+                      <span>Santal आ़रसी Preferences</span>
                     </h2>
                     <p className="text-xs text-slate-500 mt-1">
                       Configure default script rendering, audio phonetics engine, and admin credentials.
@@ -1761,10 +1788,15 @@ function AppContent() {
                           </span>
                         </div>
                         <button
-                          onClick={() => speakWithFemaleVoice('जोहार! संताली भाषा और संस्कृति मंच होड़ काथा में आपका स्वागत है।', { autoDetectLanguage: true })}
-                          className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-[11px] font-bold shrink-0"
+                          onClick={() =>
+                            speakWithFemaleVoice(
+                              'जोहार! Santal आ़रसी रे आपे जोतो को सागुनदाराम। हिन्दी हमारी गौरवशाली भाषा है। And clear natural English reading is ready.',
+                              { autoDetectLanguage: true }
+                            )
+                          }
+                          className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-[11px] font-bold shrink-0 cursor-pointer"
                         >
-                          आवाज़ जांचें
+                          3-भाषा आवाज़ जांचें
                         </button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

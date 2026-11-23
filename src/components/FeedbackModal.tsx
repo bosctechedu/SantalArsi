@@ -96,7 +96,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold text-amber-950">
-                    Johar! Welcome to Hor Katha Suite Feedback!
+                    Johar! Welcome to Santal आ़रसी Feedback!
                   </h3>
                   <span className="text-[10px] font-serif font-bold px-2 py-0.5 bg-amber-200/70 text-amber-900 rounded-md">
                     सागुनदाराम
@@ -126,7 +126,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
                   Johar! Thank you for your valuable feedback!
                 </p>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Your suggestions have been recorded and will help our lexicographers and engineers enrich Hor Katha Suite.
+                  Your suggestions have been recorded and will help our lexicographers and engineers enrich Santal आ़रसी.
                 </p>
               </div>
 

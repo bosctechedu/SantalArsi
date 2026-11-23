@@ -69,7 +69,7 @@ export const PwaInstallPrompt: React.FC = () => {
           <div className="flex items-center gap-2">
             <WifiOff className="w-4 h-4 shrink-0 animate-pulse" />
             <span>
-              <strong>ऑफ़लाइन मोड (Offline Mode):</strong> आपका इंटरनेट कनेक्शन बंद है। होड़ काथा शब्दकोश, कहानियां व टूल्स सुरक्षित रूप से ऑफ़लाइन चल रहे हैं।
+              <strong>ऑफ़लाइन मोड (Offline Mode):</strong> आपका इंटरनेट कनेक्शन बंद है। Santal आ़रसी शब्दकोश, कहानियां व टूल्स सुरक्षित रूप से ऑफ़लाइन चल रहे हैं।
             </span>
           </div>
           <span className="bg-amber-800/80 px-2 py-0.5 rounded text-[10px]">लोकल कैश्ड</span>
@@ -85,7 +85,7 @@ export const PwaInstallPrompt: React.FC = () => {
             </div>
             <div>
               <div className="font-extrabold text-sm flex flex-wrap items-center gap-2 text-slate-900">
-                <span>फोन में ऐप इंस्टॉल करें (Install Hor Katha App)</span>
+                <span>फोन में ऐप इंस्टॉल करें (Install Santal आ़रसी App)</span>
                 <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full border border-emerald-200 font-bold">
                   बिना इंटरनेट भी चलेगा
                 </span>

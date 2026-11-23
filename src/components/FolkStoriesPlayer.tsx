@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { speakWithFemaleVoice } from '../utils/speech';
+import { speakWithFemaleVoice, stopSpeaking } from '../utils/speech';
 import { useAdmin } from '../context/AdminContext';
 import { safeLoadFromStorage, safeSaveToStorage } from '../utils/storage';
 import {
@@ -399,7 +399,7 @@ export const FolkStoriesPlayer: React.FC = () => {
   };
 
   const handleStop = () => {
-    window.speechSynthesis?.cancel();
+    stopSpeaking();
     setPlayingParagraphIdx(null);
   };
 

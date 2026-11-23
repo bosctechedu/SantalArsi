@@ -559,35 +559,43 @@ type HubSection = 'exams_directory' | 'paper_preview' | 'custom_cbt' | 'mistake_
 export const SantaliExamPrepHub: React.FC = () => {
   const { words } = useAdmin();
 
-  // Dynamic Vocabulary Questions generated deterministically from dictionary words
+  // Dynamic Vocabulary Questions generated deterministically from dictionary words (ZERO fake placeholders)
   const dynamicVocabQuestions: ExamQuestion[] = useMemo(() => {
     const cleanWords: typeof words = [];
-    for (let i = 0; i < words.length && cleanWords.length < 120; i++) {
+    const seenMeanings = new Set<string>();
+    for (let i = 0; i < words.length && cleanWords.length < 160; i++) {
       const w = words[i];
-      if (w.wordDevanagari && w.meaningHindi && w.meaningHindi.length > 1) {
+      const meaning = (w.meaningHindi || '').trim();
+      if (w.wordDevanagari && meaning.length > 1 && !seenMeanings.has(meaning)) {
+        seenMeanings.add(meaning);
         cleanWords.push(w);
       }
     }
     if (cleanWords.length < 8) return [];
-    return cleanWords.slice(0, 60).map((w, idx) => {
-      const d1 = cleanWords[(idx + 7) % cleanWords.length].meaningHindi;
-      const d2 = cleanWords[(idx + 19) % cleanWords.length].meaningHindi;
-      const d3 = cleanWords[(idx + 31) % cleanWords.length].meaningHindi;
-      const options = Array.from(new Set([w.meaningHindi, d1, d2, d3]));
-      while (options.length < 4) {
-        options.push(`शब्द अर्थ विकल्प ${options.length + 1}`);
+    const built: ExamQuestion[] = [];
+    for (let idx = 0; idx < cleanWords.length && built.length < 60; idx++) {
+      const w = cleanWords[idx];
+      const correctMeaning = w.meaningHindi.trim();
+      const distractors: string[] = [];
+      for (let step = 1; step < cleanWords.length && distractors.length < 3; step++) {
+        const candidate = cleanWords[(idx + step * 7) % cleanWords.length].meaningHindi.trim();
+        if (candidate && candidate !== correctMeaning && !distractors.includes(candidate)) {
+          distractors.push(candidate);
+        }
       }
-      return {
+      if (distractors.length < 3) continue; // Skip instead of inserting fake placeholder text
+      built.push({
         id: `ex_voc_${w.id}`,
         examTag: 'शब्दावली / JSSC',
         category: 'vocabulary',
         question: `संताली शब्द "${w.wordDevanagari}" (${w.wordRoman}) का सही हिन्दी अर्थ क्या है?`,
         santaliNote: w.exampleSantali ? `प्रयोग: ${w.exampleSantali}` : undefined,
-        options: options.slice(0, 4),
+        options: [correctMeaning, distractors[0], distractors[1], distractors[2]],
         correctIndex: 0,
-        explanation: `"${w.wordDevanagari}" (${w.wordRoman}) का अर्थ "${w.meaningHindi}" (English: ${w.meaningEnglish}) होता है।`
-      };
-    });
+        explanation: `"${w.wordDevanagari}" (${w.wordRoman}) का सही अर्थ "${correctMeaning}" (English: ${w.meaningEnglish}) होता है।`
+      });
+    }
+    return built;
   }, [words]);
 
   // Convert 2026 competitive questions into unified CBT question bank items
@@ -607,10 +615,22 @@ export const SantaliExamPrepHub: React.FC = () => {
     }));
   }, []);
 
-  const allQuestionsBank = useMemo(
-    () => [...CURATED_EXAM_QUESTIONS, ...competitiveBankQuestions, ...dynamicVocabQuestions],
-    [competitiveBankQuestions, dynamicVocabQuestions]
-  );
+  // Globally deduplicate by both ID and normalized question text so NO duplicate ever enters any test
+  const allQuestionsBank = useMemo(() => {
+    const merged = [...CURATED_EXAM_QUESTIONS, ...competitiveBankQuestions, ...dynamicVocabQuestions];
+    const seenIds = new Set<string>();
+    const seenStems = new Set<string>();
+    const unique: ExamQuestion[] = [];
+    for (const q of merged) {
+      const stem = q.question.trim().toLowerCase().replace(/\s+/g, ' ');
+      if (seenIds.has(q.id) || seenStems.has(stem)) continue;
+      if (!Array.isArray(q.options) || q.options.length !== 4) continue;
+      seenIds.add(q.id);
+      seenStems.add(stem);
+      unique.push(q);
+    }
+    return unique;
+  }, [competitiveBankQuestions, dynamicVocabQuestions]);
 
   // ==========================================================
   // INDIA + JHARKHAND 2026 DIRECTORY & PAPER PREVIEW STATE
@@ -620,8 +640,9 @@ export const SantaliExamPrepHub: React.FC = () => {
   const [examSearch, setExamSearch] = useState<string>('');
   const [selectedExamId, setSelectedExamId] = useState<string>('jpsc_ccs');
   const [selectedPaperSlot, setSelectedPaperSlot] = useState<ExamPaperSlot>('pyq_2025');
-  const [showPreviewAnswers, setShowPreviewAnswers] = useState<boolean>(true);
+  const [showPreviewAnswers, setShowPreviewAnswers] = useState<boolean>(false);
   const [previewSelfAnswers, setPreviewSelfAnswers] = useState<Record<string, number>>({});
+  const [previewRefreshNonce, setPreviewRefreshNonce] = useState<number>(0);
 
   const filteredExams2026 = useMemo(() => {
     const q = examSearch.trim().toLowerCase();
@@ -648,11 +669,6 @@ export const SantaliExamPrepHub: React.FC = () => {
     [selectedPaperSlot]
   );
 
-  const activePreviewQuestions = useMemo(
-    () => getQuestionsForExamPaper(activeExam.id, selectedPaperSlot, 10),
-    [activeExam.id, selectedPaperSlot]
-  );
-
   // ==========================================================
   // REAL CBT ENGINE STATE (PRESERVED & ENHANCED)
   // ==========================================================
@@ -664,6 +680,46 @@ export const SantaliExamPrepHub: React.FC = () => {
   const [negativeMark, setNegativeMark] = useState<number>(0.5);
   const [selectedSubject, setSelectedSubject] = useState<'all' | ExamCategory>('all');
   const [usedIds, setUsedIds] = useState<Set<string>>(() => loadUsedIds());
+  // Real Instant Right/Wrong + Explanation Check (default ON so user immediately sees wrong vs right + explanation)
+  const [instantCheckMode, setInstantCheckMode] = useState<boolean>(true);
+
+  // Snapshot non-repeating preview questions with shuffled options whenever exam, slot, or manual refresh changes
+  const [activePreviewQuestions, setActivePreviewQuestions] = useState<ExamQuestion[]>([]);
+
+  useEffect(() => {
+    const freshRaw = getQuestionsForExamPaper(activeExam.id, selectedPaperSlot, 10, usedIds, true);
+    const randomized = freshRaw.map((cq) =>
+      randomizeOptions({
+        id: cq.id,
+        examTag: cq.examTag,
+        category: activeExam.region === 'jharkhand' ? 'jharkhand_gk' : 'india_gk',
+        question: cq.question,
+        santaliNote: cq.santaliNote,
+        options: [...cq.options],
+        correctIndex: cq.correctIndex,
+        explanation: cq.explanation
+      })
+    );
+    setActivePreviewQuestions(randomized);
+    setPreviewSelfAnswers({});
+    // Intentionally only rebuild preview set on exam/slot change or explicit refresh, NOT on every single answer click
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeExam.id, activeExam.region, selectedPaperSlot, previewRefreshNonce]);
+
+  const previewScoreStats = useMemo(() => {
+    let answered = 0;
+    let correct = 0;
+    let wrong = 0;
+    for (const q of activePreviewQuestions) {
+      const chosen = previewSelfAnswers[q.id];
+      if (chosen !== undefined) {
+        answered++;
+        if (chosen === q.correctIndex) correct++;
+        else wrong++;
+      }
+    }
+    return { answered, correct, wrong, total: activePreviewQuestions.length };
+  }, [activePreviewQuestions, previewSelfAnswers]);
 
   // Live Exam Running State
   const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
@@ -819,24 +875,21 @@ export const SantaliExamPrepHub: React.FC = () => {
 
   const handleStartCustomExam = () => {
     const currentUsed = new Set(usedIds);
-    let unseen = filteredBank.filter((q) => !currentUsed.has(q.id));
-    let wrappedNote: string | null = null;
+    const unseen = filteredBank.filter((q) => !currentUsed.has(q.id));
 
+    // STRICT NO-REPEAT: Never silently repeat already-seen questions!
     if (unseen.length === 0) {
-      filteredBank.forEach((q) => currentUsed.delete(q.id));
-      unseen = [...filteredBank];
-      wrappedNote = 'इस विषय के सभी प्रश्न एक चक्र पूरे कर चुके थे — नया ताज़ा सेट शुरू किया गया है!';
+      setPoolWrappedMsg(
+        `इस विषय के सभी ${filteredBank.length} प्रश्न आप पहले ही हल कर चुके हैं (Zero-Repeat सुरक्षित)। नया चक्र शुरू करने के लिए "प्रश्न पूल रीसेट करें" बटन दबाएँ।`
+      );
+      return;
     }
 
-    let picked = fisherYatesShuffle(unseen).slice(0, questionCount);
-    if (picked.length < questionCount && unseen.length < filteredBank.length) {
-      const remainingNeeded = questionCount - picked.length;
-      const seenFallback = fisherYatesShuffle(
-        filteredBank.filter((q) => !picked.some((p) => p.id === q.id))
-      ).slice(0, remainingNeeded);
-      picked = [...picked, ...seenFallback];
-      wrappedNote = 'अधिकांश प्रश्न पहले हल किए जा चुके थे; शेष अनदेखे व ताज़ा प्रश्न शामिल किए गए हैं।';
-    }
+    const picked = fisherYatesShuffle(unseen).slice(0, Math.min(questionCount, unseen.length));
+    const wrappedNote =
+      unseen.length < questionCount
+        ? `इस विषय में केवल ${unseen.length} अनदेखे प्रश्न शेष थे — बिना किसी दोहराव (No-Repeat) के वही ${unseen.length} नए प्रश्न दिए गए हैं।`
+        : null;
 
     const randomized = picked.map(randomizeOptions);
     randomized.forEach((q) => currentUsed.add(q.id));
@@ -844,7 +897,7 @@ export const SantaliExamPrepHub: React.FC = () => {
     saveUsedIds(currentUsed);
 
     const durSec = durationMinutes * 60;
-    setActiveCbtTitle(`कस्टम CBT परीक्षा · ${questionCount} प्रश्न (Zero Repeat)`);
+    setActiveCbtTitle(`कस्टम CBT परीक्षा · ${randomized.length} प्रश्न (Zero Repeat)`);
     setIsMistakeRetest(false);
     setExamQuestions(randomized);
     setAnswers({});
@@ -964,7 +1017,18 @@ export const SantaliExamPrepHub: React.FC = () => {
   const handleLaunchPaperCbt = (examId: string, slot: ExamPaperSlot) => {
     const exam = COMPETITIVE_EXAMS_2026.find((e) => e.id === examId) || activeExam;
     const slotMeta = PAPER_SLOTS_META.find((p) => p.slot === slot) || PAPER_SLOTS_META[0];
-    const paperQs = getQuestionsForExamPaper(exam.id, slot, 10).map((cq) =>
+    const currentUsed = new Set(usedIds);
+
+    // STRICT NO-REPEAT: Pull ONLY unseen questions for this exam/slot (never repeat across ANY test!)
+    const freshPaperRaw = getQuestionsForExamPaper(exam.id, slot, 10, currentUsed, true);
+    if (freshPaperRaw.length === 0) {
+      setPoolWrappedMsg(
+        `भारत + झारखंड प्रतियोगी बैंक के सभी ${ALL_COMPETITIVE_QUESTIONS_2026.length} प्रश्न आप पहले हल कर चुके हैं (Zero-Repeat सुरक्षित)। नया चक्र शुरू करने के लिए "प्रश्न पूल रीसेट करें" दबाएँ।`
+      );
+      return;
+    }
+
+    const paperQs = freshPaperRaw.map((cq) =>
       randomizeOptions({
         id: cq.id,
         examTag: cq.examTag,
@@ -977,13 +1041,17 @@ export const SantaliExamPrepHub: React.FC = () => {
       })
     );
 
+    paperQs.forEach((q) => currentUsed.add(q.id));
+    setUsedIds(currentUsed);
+    saveUsedIds(currentUsed);
+
     const cfg = exam.defaultCbtConfig;
     const durSec = cfg.durationMinutes * 60;
     setMarksPerCorrect(cfg.marksPerCorrect);
     setNegativeMark(cfg.negativeMark);
     setDurationMinutes(cfg.durationMinutes);
     setQuestionCount(paperQs.length);
-    setActiveCbtTitle(`${exam.shortName} · ${slotMeta.label}`);
+    setActiveCbtTitle(`${exam.shortName} · ${slotMeta.label} (${paperQs.length} नए प्रश्न)`);
     setIsMistakeRetest(false);
     setExamQuestions(paperQs);
     setAnswers({});
@@ -991,7 +1059,11 @@ export const SantaliExamPrepHub: React.FC = () => {
     setCurrentIdx(0);
     setSecondsLeft(durSec);
     setTotalDurationSec(durSec);
-    setPoolWrappedMsg(null);
+    setPoolWrappedMsg(
+      paperQs.length < 10
+        ? `इस बैंक में केवल ${paperQs.length} अनदेखे प्रश्न शेष थे — बिना किसी दोहराव (No-Repeat) के वही प्रश्न दिए गए हैं।`
+        : null
+    );
     setShowSubmitConfirm(false);
     setPhase('running');
   };
@@ -1000,8 +1072,9 @@ export const SantaliExamPrepHub: React.FC = () => {
     const empty = new Set<string>();
     setUsedIds(empty);
     saveUsedIds(empty);
-    setPoolWrappedMsg('प्रश्न पूल सफलतापूर्वक रीसेट हो गया! अब सभी प्रश्न पुनः उपलब्ध हैं।');
-    setTimeout(() => setPoolWrappedMsg(null), 3500);
+    setPreviewRefreshNonce((n) => n + 1);
+    setPoolWrappedMsg('प्रश्न पूल सफलतापूर्वक रीसेट हो गया! अब सभी प्रश्न नए चक्र के लिए उपलब्ध हैं।');
+    setTimeout(() => setPoolWrappedMsg(null), 4000);
   };
 
   const formatTime = (sec: number) => {
@@ -1158,9 +1231,21 @@ export const SantaliExamPrepHub: React.FC = () => {
         )}
 
         {poolWrappedMsg && (
-          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-xs font-semibold text-amber-950 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
-            <span>{poolWrappedMsg}</span>
+          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-xs font-semibold text-amber-950 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>{poolWrappedMsg}</span>
+            </div>
+            {usedIds.size > 0 && (
+              <button
+                type="button"
+                onClick={handleResetQuestionPool}
+                className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>प्रश्न पूल रीसेट करें</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -1453,6 +1538,15 @@ export const SantaliExamPrepHub: React.FC = () => {
 
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
                   <button
+                    onClick={() => setPreviewRefreshNonce((n) => n + 1)}
+                    className="px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-900 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                    title="बिना दोहराव के नया प्रश्न सेट लोड करें"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>नया अनदेखा सेट</span>
+                  </button>
+
+                  <button
                     onClick={() => {
                       setShowPreviewAnswers((v) => !v);
                       setPreviewSelfAnswers({});
@@ -1460,7 +1554,7 @@ export const SantaliExamPrepHub: React.FC = () => {
                     className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                   >
                     {showPreviewAnswers ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    <span>{showPreviewAnswers ? 'उत्तर छिपाएँ (Self-Test Mode)' : 'सभी उत्तर दिखाएँ'}</span>
+                    <span>{showPreviewAnswers ? 'सेल्फ-टेस्ट मोड (उत्तर छिपाएँ)' : 'उत्तर-कुंजी देखें'}</span>
                   </button>
 
                   <button
@@ -1468,7 +1562,7 @@ export const SantaliExamPrepHub: React.FC = () => {
                     className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>पेपर + उत्तर-कुंजी डाउनलोड</span>
+                    <span>पेपर डाउनलोड</span>
                   </button>
 
                   <button
@@ -1476,7 +1570,7 @@ export const SantaliExamPrepHub: React.FC = () => {
                     className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                   >
                     <Printer className="w-3.5 h-3.5" />
-                    <span>प्रिंट करें</span>
+                    <span>प्रिंट</span>
                   </button>
 
                   <button
@@ -1489,7 +1583,46 @@ export const SantaliExamPrepHub: React.FC = () => {
                 </div>
               </div>
 
+              {/* Live Self-Test Score Strip when in Self-Test Mode */}
+              {!showPreviewAnswers && activePreviewQuestions.length > 0 && (
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-3 font-mono tabular-nums">
+                    <span className="font-sans font-bold text-slate-900">वास्तविक सेल्फ-टेस्ट स्कोर:</span>
+                    <span>
+                      हल किए: <strong>{previewScoreStats.answered}/{previewScoreStats.total}</strong>
+                    </span>
+                    <span className="text-emerald-700 font-bold">
+                      ✓ सही: {previewScoreStats.correct}
+                    </span>
+                    <span className="text-rose-700 font-bold">
+                      ✗ गलत: {previewScoreStats.wrong}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-600">
+                    किसी भी विकल्प पर क्लिक करते ही तुरंत सही/गलत परिणाम व व्याख्या दिखेगी (विकल्प शफ़ल हैं)।
+                  </span>
+                </div>
+              )}
+
               {/* Paper Questions List */}
+              {activePreviewQuestions.length === 0 ? (
+                <div className="p-8 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-3">
+                  <p className="text-sm font-bold text-amber-950">
+                    सभी {ALL_COMPETITIVE_QUESTIONS_2026.length} प्रतियोगी प्रश्न आप पहले हल कर चुके हैं (Zero-Repeat सुरक्षित)!
+                  </p>
+                  <p className="text-xs text-slate-700">
+                    किसी भी प्रश्न का दोहराव रोकने के लिए नया सेट रोका गया है। नए चक्र की शुरुआत करने हेतु पूल रीसेट करें।
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleResetQuestionPool}
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>प्रश्न पूल रीसेट करें</span>
+                  </button>
+                </div>
+              ) : (
               <div className="space-y-5 divide-y divide-slate-100">
                 {activePreviewQuestions.map((q, idx) => (
                   <div key={q.id} className={idx > 0 ? 'pt-5 space-y-3' : 'space-y-3'}>
@@ -1539,6 +1672,14 @@ export const SantaliExamPrepHub: React.FC = () => {
                             onClick={() => {
                               if (showPreviewAnswers || hasSelfTried) return;
                               setPreviewSelfAnswers((prev) => ({ ...prev, [q.id]: optIdx }));
+                              // Mark attempted question globally as used so it NEVER repeats in future tests
+                              setUsedIds((prev) => {
+                                if (prev.has(q.id)) return prev;
+                                const next = new Set(prev);
+                                next.add(q.id);
+                                saveUsedIds(next);
+                                return next;
+                              });
                               if (optIdx !== q.correctIndex) {
                                 recordMistake({
                                   id: q.id,
@@ -1554,12 +1695,12 @@ export const SantaliExamPrepHub: React.FC = () => {
                             }}
                             className={`text-left px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors ${
                               isAnsHighlight
-                                ? 'bg-emerald-50 border-emerald-400 text-emerald-950 font-semibold'
+                                ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-semibold'
                                 : isWrongChosen
-                                ? 'bg-rose-50 border-rose-400 text-rose-900 font-semibold'
+                                ? 'bg-rose-50 border-rose-500 text-rose-950 font-semibold'
                                 : !showPreviewAnswers && !hasSelfTried
                                 ? 'bg-slate-50 hover:bg-sky-50 hover:border-sky-300 border-slate-200 text-slate-800 cursor-pointer'
-                                : 'bg-slate-50 border-slate-200 text-slate-800'
+                                : 'bg-slate-50 border-slate-200 text-slate-500'
                             }`}
                           >
                             <span>
@@ -1568,8 +1709,18 @@ export const SantaliExamPrepHub: React.FC = () => {
                               </strong>
                               {opt}
                             </span>
-                            {isAnsHighlight && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
-                            {isWrongChosen && <XCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                            {isAnsHighlight && (
+                              <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 shrink-0">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <span>सही</span>
+                              </span>
+                            )}
+                            {isWrongChosen && (
+                              <span className="flex items-center gap-1 text-[11px] font-bold text-rose-700 shrink-0">
+                                <XCircle className="w-4 h-4 text-rose-600" />
+                                <span>गलत</span>
+                              </span>
+                            )}
                           </button>
                         );
                       })}
@@ -1577,30 +1728,32 @@ export const SantaliExamPrepHub: React.FC = () => {
 
                     {(showPreviewAnswers || previewSelfAnswers[q.id] !== undefined) && (
                       <div
-                        className={`p-3 rounded-xl border text-xs leading-relaxed ${
+                        className={`p-3.5 rounded-xl border text-xs leading-relaxed ${
                           !showPreviewAnswers && previewSelfAnswers[q.id] !== q.correctIndex
-                            ? 'bg-rose-50/80 border-rose-200 text-rose-950'
+                            ? 'bg-rose-50/90 border-rose-300 text-rose-950'
+                            : !showPreviewAnswers && previewSelfAnswers[q.id] === q.correctIndex
+                            ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
                             : 'bg-amber-50/70 border-amber-200 text-slate-700'
                         }`}
                       >
                         {!showPreviewAnswers && previewSelfAnswers[q.id] !== undefined && (
                           <div className="font-bold mb-1">
                             {previewSelfAnswers[q.id] === q.correctIndex ? (
-                              <span className="text-emerald-800">✓ आपका चयन सही है!</span>
+                              <span className="text-emerald-800">✓ बिल्कुल सही उत्तर!</span>
                             ) : (
                               <span className="text-rose-800">
-                                ✗ आपका चयन गलत है — सही उत्तर ({String.fromCharCode(65 + q.correctIndex)}) है।
+                                ✗ आपका उत्तर गलत है — आपने ({String.fromCharCode(65 + previewSelfAnswers[q.id])}) चुना, जबकि सही उत्तर ({String.fromCharCode(65 + q.correctIndex)}) है।
                               </span>
                             )}
                           </div>
                         )}
-                        <strong className="text-amber-950">सही उत्तर ({String.fromCharCode(65 + q.correctIndex)}) — व्याख्या:</strong>{' '}
-                        {q.explanation}
+                        <strong className="text-slate-900">व्याख्या (Explanation):</strong> {q.explanation}
                       </div>
                     )}
                   </div>
                 ))}
               </div>
+              )}
 
               {/* Bottom Action Bar */}
               <div className="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
@@ -1789,6 +1942,40 @@ export const SantaliExamPrepHub: React.FC = () => {
               </div>
             </div>
 
+            <div className="space-y-2 text-xs">
+              <label className="font-bold text-slate-800 block">7. उत्तर जाँच मोड (Grading &amp; Explanation Mode):</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setInstantCheckMode(true)}
+                  className={`p-3 rounded-xl border text-left transition-colors cursor-pointer ${
+                    instantCheckMode
+                      ? 'bg-emerald-700 text-white border-emerald-700'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="font-bold">✓ तुरंत सही / गलत + व्याख्या (Recommended)</div>
+                  <div className={`text-[11px] mt-0.5 ${instantCheckMode ? 'text-emerald-100' : 'text-slate-500'}`}>
+                    हर विकल्प चुनते ही तुरंत सही (हरा) या गलत (लाल) + सटीक व्याख्या दिखेगी
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstantCheckMode(false)}
+                  className={`p-3 rounded-xl border text-left transition-colors cursor-pointer ${
+                    !instantCheckMode
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="font-bold">अंतिम सबमिट पर जाँच (Strict Exam Mode)</div>
+                  <div className={`text-[11px] mt-0.5 ${!instantCheckMode ? 'text-slate-300' : 'text-slate-500'}`}>
+                    परीक्षा समाप्त कर सबमिट करने के बाद पूरा परिणाम व व्याख्या खुलेगी
+                  </div>
+                </button>
+              </div>
+            </div>
+
             <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="text-xs text-slate-700 space-y-1">
                 <div className="font-bold text-slate-900">
@@ -1820,27 +2007,56 @@ export const SantaliExamPrepHub: React.FC = () => {
         {/* ======================================================= */}
         {phase === 'running' && currentQ && (
           <div className="space-y-4">
-            {/* Live Mode Switcher Bar */}
+            {/* Live Mode Switcher Bar + Real-Time Score */}
             <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div className="font-bold text-slate-800">{activeCbtTitle}</div>
-              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="font-bold text-slate-800">{activeCbtTitle}</span>
+                {instantCheckMode && (
+                  <div className="flex flex-wrap items-center gap-2 font-mono tabular-nums text-[11px] bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
+                    <span className="text-emerald-700 font-bold">✓ सही: {resultMetrics.correct}</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="text-rose-700 font-bold">✗ गलत: {resultMetrics.wrong}</span>
+                    <span aria-hidden="true">·</span>
+                    <span className="text-slate-800 font-bold">
+                      स्कोर: {resultMetrics.rawScore}/{resultMetrics.totalMarks}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
                 <button
-                  onClick={() => setExamDisplayMode('cbt')}
-                  className={`px-3 py-1 rounded-md font-semibold cursor-pointer ${
-                    examDisplayMode === 'cbt' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+                  type="button"
+                  onClick={() => setInstantCheckMode((v) => !v)}
+                  className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold cursor-pointer ${
+                    instantCheckMode
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                      : 'bg-slate-100 border-slate-200 text-slate-700'
                   }`}
+                  title="तुरंत सही/गलत जाँच चालू या बंद करें"
                 >
-                  CBT 1-by-1
+                  {instantCheckMode ? '✓ तुरंत सही/गलत + व्याख्या: ON' : 'अंतिम सबमिट जाँच मोड'}
                 </button>
-                <button
-                  onClick={() => setExamDisplayMode('omr')}
-                  className={`px-3 py-1 rounded-md font-semibold flex items-center gap-1 cursor-pointer ${
-                    examDisplayMode === 'omr' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-                  }`}
-                >
-                  <Grid className="w-3.5 h-3.5" />
-                  <span>OMR बबल शीट</span>
-                </button>
+
+                <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
+                  <button
+                    onClick={() => setExamDisplayMode('cbt')}
+                    className={`px-3 py-1 rounded-md font-semibold cursor-pointer ${
+                      examDisplayMode === 'cbt' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+                    }`}
+                  >
+                    CBT 1-by-1
+                  </button>
+                  <button
+                    onClick={() => setExamDisplayMode('omr')}
+                    className={`px-3 py-1 rounded-md font-semibold flex items-center gap-1 cursor-pointer ${
+                      examDisplayMode === 'omr' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+                    }`}
+                  >
+                    <Grid className="w-3.5 h-3.5" />
+                    <span>OMR बबल शीट</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1853,37 +2069,73 @@ export const SantaliExamPrepHub: React.FC = () => {
                     <h2 className="text-sm font-bold text-slate-900">प्रश्न-पुस्तिका ({examQuestions.length} प्रश्न)</h2>
                     <span className="text-xs text-slate-500">दाईं ओर OMR शीट में गोले भरें</span>
                   </div>
-                  {examQuestions.map((q, qIdx) => (
-                    <div key={q.id} className="pb-4 border-b border-slate-100 last:border-b-0 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-bold text-slate-900 leading-snug">
-                          <span className="font-mono text-amber-800 mr-1.5">Q.{qIdx + 1}</span>
-                          {q.question}
-                        </p>
-                        <button
-                          onClick={() =>
-                            speakWithFemaleVoice(`${q.question}। ${q.options.join('। ')}`, {
-                              autoDetectLanguage: true
-                            })
-                          }
-                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 shrink-0 cursor-pointer"
-                          title="प्रश्न सुनें"
-                        >
-                          <Volume2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs text-slate-700 pl-2">
-                        {q.options.map((opt, optIdx) => (
-                          <div key={optIdx} className="py-1">
-                            <strong className="font-mono text-slate-500 mr-1.5">
-                              ({String.fromCharCode(65 + optIdx)})
-                            </strong>
-                            {opt}
+                  {examQuestions.map((q, qIdx) => {
+                    const chosen = answers[q.id];
+                    const showEval = instantCheckMode && chosen !== undefined;
+                    const isRight = chosen === q.correctIndex;
+                    return (
+                      <div key={q.id} className="pb-4 border-b border-slate-100 last:border-b-0 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-bold text-slate-900 leading-snug">
+                            <span className="font-mono text-amber-800 mr-1.5">Q.{qIdx + 1}</span>
+                            {q.question}
+                          </p>
+                          <button
+                            onClick={() =>
+                              speakWithFemaleVoice(`${q.question}। ${q.options.join('। ')}`, {
+                                autoDetectLanguage: true
+                              })
+                            }
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 shrink-0 cursor-pointer"
+                            title="प्रश्न सुनें"
+                          >
+                            <Volume2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs text-slate-700 pl-2">
+                          {q.options.map((opt, optIdx) => {
+                            const isTrueOpt = showEval && optIdx === q.correctIndex;
+                            const isWrongOpt = showEval && chosen === optIdx && optIdx !== q.correctIndex;
+                            return (
+                              <div
+                                key={optIdx}
+                                className={`py-1 px-2 rounded-lg ${
+                                  isTrueOpt
+                                    ? 'bg-emerald-50 text-emerald-950 font-bold border border-emerald-300'
+                                    : isWrongOpt
+                                    ? 'bg-rose-50 text-rose-950 font-bold border border-rose-300'
+                                    : ''
+                                }`}
+                              >
+                                <strong className="font-mono text-slate-500 mr-1.5">
+                                  ({String.fromCharCode(65 + optIdx)})
+                                </strong>
+                                {opt}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {showEval && (
+                          <div
+                            className={`p-3 rounded-xl border text-xs leading-relaxed ${
+                              isRight
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                                : 'bg-rose-50 border-rose-300 text-rose-950'
+                            }`}
+                          >
+                            <div className="font-bold mb-0.5">
+                              {isRight
+                                ? `✓ सही उत्तर! (+${marksPerCorrect} अंक)`
+                                : `✗ गलत उत्तर${negativeMark > 0 ? ` (-${negativeMark})` : ''}! सही उत्तर (${String.fromCharCode(65 + q.correctIndex)}) है।`}
+                            </div>
+                            <p className="text-slate-800">
+                              <strong>व्याख्या:</strong> {q.explanation}
+                            </p>
                           </div>
-                        ))}
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Right: Authentic OMR Bubble Sheet */}
@@ -1904,12 +2156,18 @@ export const SantaliExamPrepHub: React.FC = () => {
                     {examQuestions.map((q, qIdx) => {
                       const chosen = answers[q.id];
                       const isRev = Boolean(markedReview[q.id]);
+                      const hasEval = instantCheckMode && chosen !== undefined;
+                      const isRowRight = hasEval && chosen === q.correctIndex;
                       return (
                         <div
                           key={q.id}
                           className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl border ${
-                            chosen !== undefined
-                              ? 'bg-amber-50/40 border-amber-200'
+                            hasEval
+                              ? isRowRight
+                                ? 'bg-emerald-50/60 border-emerald-300'
+                                : 'bg-rose-50/60 border-rose-300'
+                              : chosen !== undefined
+                              ? 'bg-sky-50/50 border-sky-200'
                               : 'bg-slate-50/70 border-slate-200'
                           }`}
                         >
@@ -1919,18 +2177,35 @@ export const SantaliExamPrepHub: React.FC = () => {
                           <div className="flex items-center gap-2.5">
                             {[0, 1, 2, 3].map((optIdx) => {
                               const filled = chosen === optIdx;
+                              const isTrueOpt = optIdx === q.correctIndex;
+                              let bubbleCls =
+                                'bg-white border-slate-400 text-slate-700 hover:border-slate-900';
+                              if (hasEval) {
+                                if (filled && isTrueOpt) {
+                                  bubbleCls = 'bg-emerald-600 border-emerald-600 text-white';
+                                } else if (filled && !isTrueOpt) {
+                                  bubbleCls = 'bg-rose-600 border-rose-600 text-white';
+                                } else if (isTrueOpt) {
+                                  bubbleCls = 'bg-emerald-50 border-emerald-600 text-emerald-900 ring-2 ring-emerald-200';
+                                } else {
+                                  bubbleCls = 'bg-slate-100 border-slate-300 text-slate-400';
+                                }
+                              } else if (filled) {
+                                bubbleCls = 'bg-slate-900 border-slate-900 text-white';
+                              }
+
                               return (
                                 <button
                                   key={optIdx}
                                   type="button"
-                                  onClick={() =>
-                                    setAnswers((prev) => ({ ...prev, [q.id]: optIdx }))
-                                  }
-                                  className={`w-8 h-8 rounded-full border-2 font-mono text-xs font-bold flex items-center justify-center transition-colors cursor-pointer ${
-                                    filled
-                                      ? 'bg-slate-900 border-slate-900 text-white'
-                                      : 'bg-white border-slate-400 text-slate-700 hover:border-slate-900'
-                                  }`}
+                                  disabled={hasEval}
+                                  onClick={() => {
+                                    if (hasEval) return;
+                                    setAnswers((prev) => ({ ...prev, [q.id]: optIdx }));
+                                  }}
+                                  className={`w-8 h-8 rounded-full border-2 font-mono text-xs font-bold flex items-center justify-center transition-colors ${
+                                    hasEval ? 'cursor-default' : 'cursor-pointer'
+                                  } ${bubbleCls}`}
                                 >
                                   {String.fromCharCode(65 + optIdx)}
                                 </button>
@@ -1950,7 +2225,7 @@ export const SantaliExamPrepHub: React.FC = () => {
                             >
                               <Flag className="w-3.5 h-3.5" />
                             </button>
-                            {chosen !== undefined && (
+                            {chosen !== undefined && !instantCheckMode && (
                               <button
                                 type="button"
                                 onClick={() =>
@@ -1991,195 +2266,329 @@ export const SantaliExamPrepHub: React.FC = () => {
             ) : (
               /* STANDARD 1-BY-1 CBT INTERFACE */
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 border-b border-slate-100 pb-3">
-                <div className="space-y-1">
-                  <div className="text-[11px] font-semibold text-slate-500">{activeCbtTitle}</div>
-                  <div className="flex flex-wrap items-center gap-2 font-bold text-slate-800">
-                    <span className="px-2.5 py-0.5 rounded-md bg-slate-100 font-mono tabular-nums">
-                      प्रश्न {currentIdx + 1} / {examQuestions.length}
-                    </span>
-                    <span className="text-amber-800">{currentQ.examTag}</span>
-                    <span className="font-mono text-emerald-700">+{marksPerCorrect}</span>
-                    {negativeMark > 0 && <span className="font-mono text-rose-700">-{negativeMark}</span>}
+                <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 space-y-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 border-b border-slate-100 pb-3">
+                    <div className="space-y-1">
+                      <div className="text-[11px] font-semibold text-slate-500">{activeCbtTitle}</div>
+                      <div className="flex flex-wrap items-center gap-2 font-bold text-slate-800">
+                        <span className="px-2.5 py-0.5 rounded-md bg-slate-100 font-mono tabular-nums">
+                          प्रश्न {currentIdx + 1} / {examQuestions.length}
+                        </span>
+                        <span className="text-amber-800">{currentQ.examTag}</span>
+                        <span className="font-mono text-emerald-700">+{marksPerCorrect}</span>
+                        {negativeMark > 0 && <span className="font-mono text-rose-700">-{negativeMark}</span>}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        speakWithFemaleVoice(`${currentQ.question}। ${currentQ.options.join('। ')}`, {
+                          autoDetectLanguage: true
+                        })
+                      }
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Volume2 className="w-3.5 h-3.5 text-sky-700" />
+                      <span>प्रश्न सुनें</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">{currentQ.question}</h2>
+                    {currentQ.santaliNote && (
+                      <p className="text-xs text-amber-800 font-medium">{currentQ.santaliNote}</p>
+                    )}
+                  </div>
+
+                  {(() => {
+                    const chosenIdx = answers[currentQ.id];
+                    const hasAnswered = chosenIdx !== undefined;
+                    const showInstantEval = instantCheckMode && hasAnswered;
+                    const isUserCorrect = hasAnswered && chosenIdx === currentQ.correctIndex;
+
+                    return (
+                      <>
+                        <div className="space-y-2.5">
+                          {currentQ.options.map((opt, idx) => {
+                            const isSelected = chosenIdx === idx;
+                            const isRightOpt = idx === currentQ.correctIndex;
+                            const isWrongSelected = showInstantEval && isSelected && !isRightOpt;
+                            const isRightRevealed = showInstantEval && isRightOpt;
+
+                            let optionCls =
+                              'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800 cursor-pointer';
+                            if (isRightRevealed) {
+                              optionCls =
+                                'bg-emerald-50 border-emerald-500 text-emerald-950 font-bold ring-2 ring-emerald-200 cursor-default';
+                            } else if (isWrongSelected) {
+                              optionCls =
+                                'bg-rose-50 border-rose-500 text-rose-950 font-bold ring-2 ring-rose-200 cursor-default';
+                            } else if (showInstantEval) {
+                              optionCls = 'bg-slate-50 border-slate-200 text-slate-400 cursor-default';
+                            } else if (isSelected) {
+                              optionCls =
+                                'bg-sky-50 border-sky-600 text-sky-950 font-bold ring-2 ring-sky-200 cursor-pointer';
+                            }
+
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                disabled={showInstantEval}
+                                onClick={() => {
+                                  if (showInstantEval) return;
+                                  setAnswers((prev) => ({ ...prev, [currentQ.id]: idx }));
+                                }}
+                                className={`w-full text-left px-4 py-3.5 rounded-xl border text-sm transition-colors flex items-center justify-between gap-3 ${optionCls}`}
+                              >
+                                <span className="flex items-center gap-2.5">
+                                  <span
+                                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                      isRightRevealed
+                                        ? 'border-emerald-600 bg-emerald-600'
+                                        : isWrongSelected
+                                        ? 'border-rose-600 bg-rose-600'
+                                        : isSelected
+                                        ? 'border-sky-600 bg-sky-600'
+                                        : 'border-slate-300 bg-white'
+                                    }`}
+                                  >
+                                    {(isSelected || isRightRevealed) && (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                                    )}
+                                  </span>
+                                  <span>
+                                    <span className="font-mono mr-2 text-xs font-bold text-slate-500">
+                                      {String.fromCharCode(65 + idx)}.
+                                    </span>
+                                    {opt}
+                                  </span>
+                                </span>
+
+                                {isRightRevealed ? (
+                                  <span className="flex items-center gap-1 text-xs font-bold text-emerald-700 shrink-0">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                    <span>{isSelected ? `सही (+${marksPerCorrect})` : 'सही उत्तर'}</span>
+                                  </span>
+                                ) : isWrongSelected ? (
+                                  <span className="flex items-center gap-1 text-xs font-bold text-rose-700 shrink-0">
+                                    <XCircle className="w-4 h-4 text-rose-600" />
+                                    <span>गलत{negativeMark > 0 ? ` (-${negativeMark})` : ''}</span>
+                                  </span>
+                                ) : isSelected ? (
+                                  <span className="text-[11px] font-bold text-sky-700 shrink-0">
+                                    चयनित (सबमिट पर जाँच)
+                                  </span>
+                                ) : null}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Instant Authentic Verification & Explanation Card */}
+                        {showInstantEval && (
+                          <div
+                            className={`p-4 rounded-2xl border space-y-2 text-xs sm:text-sm ${
+                              isUserCorrect
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                                : 'bg-rose-50 border-rose-300 text-rose-950'
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="font-bold flex items-center gap-1.5">
+                                {isUserCorrect ? (
+                                  <>
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    <span>बिल्कुल सही उत्तर! (+{marksPerCorrect} अंक जोड़े गए)</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                                    <span>
+                                      गलत उत्तर{negativeMark > 0 ? ` (-${negativeMark} अंक)` : ''}! आपने (
+                                      {String.fromCharCode(65 + chosenIdx)}) चुना, जबकि सही उत्तर (
+                                      {String.fromCharCode(65 + currentQ.correctIndex)}) है।
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  speakWithFemaleVoice(
+                                    `सही उत्तर: ${currentQ.options[currentQ.correctIndex]}। व्याख्या: ${currentQ.explanation}`,
+                                    { autoDetectLanguage: true }
+                                  )
+                                }
+                                className="px-2.5 py-1 rounded-lg bg-white/80 hover:bg-white border border-slate-200 text-slate-800 text-[11px] font-semibold flex items-center gap-1 cursor-pointer shrink-0"
+                              >
+                                <Volume2 className="w-3.5 h-3.5 text-sky-700" />
+                                <span>व्याख्या सुनें</span>
+                              </button>
+                            </div>
+                            <p className="text-xs leading-relaxed text-slate-800">
+                              <strong className="text-slate-900">व्याख्या (Explanation):</strong> {currentQ.explanation}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() =>
+                          setMarkedReview((prev) => ({ ...prev, [currentQ.id]: !prev[currentQ.id] }))
+                        }
+                        className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 border cursor-pointer ${
+                          markedReview[currentQ.id]
+                            ? 'bg-purple-100 border-purple-400 text-purple-900'
+                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <Flag className="w-3.5 h-3.5" />
+                        <span>{markedReview[currentQ.id] ? 'समीक्षा चिह्नित' : 'पुनः समीक्षा (Review)'}</span>
+                      </button>
+
+                      {answers[currentQ.id] !== undefined && !instantCheckMode && (
+                        <button
+                          onClick={() =>
+                            setAnswers((prev) => {
+                              const next = { ...prev };
+                              delete next[currentQ.id];
+                              return next;
+                            })
+                          }
+                          className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+                        >
+                          चयन साफ़ करें (Clear)
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={currentIdx === 0}
+                        onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-800 rounded-xl text-xs font-bold cursor-pointer"
+                      >
+                        ← पिछला
+                      </button>
+
+                      {currentIdx < examQuestions.length - 1 ? (
+                        <button
+                          onClick={() => setCurrentIdx((i) => Math.min(examQuestions.length - 1, i + 1))}
+                          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer"
+                        >
+                          अगला प्रश्न →
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setShowSubmitConfirm(true)}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+                        >
+                          परीक्षा सबमिट करें ✓
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <button
-                  onClick={() =>
-                    speakWithFemaleVoice(`${currentQ.question}। ${currentQ.options.join('। ')}`, {
-                      autoDetectLanguage: true
-                    })
-                  }
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Volume2 className="w-3.5 h-3.5 text-sky-700" />
-                  <span>प्रश्न सुनें</span>
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">{currentQ.question}</h2>
-                {currentQ.santaliNote && (
-                  <p className="text-xs text-amber-800 font-medium">{currentQ.santaliNote}</p>
-                )}
-              </div>
-
-              <div className="space-y-2.5">
-                {currentQ.options.map((opt, idx) => {
-                  const isSelected = answers[currentQ.id] === idx;
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => setAnswers((prev) => ({ ...prev, [currentQ.id]: idx }))}
-                      className={`w-full text-left px-4 py-3.5 rounded-xl border text-sm transition-colors flex items-center justify-between gap-3 cursor-pointer ${
-                        isSelected
-                          ? 'bg-sky-50 border-sky-600 text-sky-950 font-bold ring-2 ring-sky-200'
-                          : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <span
-                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            isSelected ? 'border-sky-600 bg-sky-600' : 'border-slate-300 bg-white'
-                          }`}
-                        >
-                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                        </span>
-                        <span>
-                          <span className="font-mono mr-2 text-xs font-bold text-slate-500">
-                            {String.fromCharCode(65 + idx)}.
-                          </span>
-                          {opt}
-                        </span>
-                      </span>
-                      {isSelected && (
-                        <span className="text-[11px] font-bold text-sky-700 shrink-0">चयनित</span>
+                {/* Right Sidebar: Authentic Graded OMR Palette (Green=Correct, Red=Wrong, Blue=Pending Strict) */}
+                <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold text-slate-900">OMR प्रश्न पैलेट</h3>
+                    <p className="text-xs text-slate-500 font-mono tabular-nums">
+                      उत्तरित: {Object.keys(answers).length} / {examQuestions.length}
+                      {instantCheckMode && (
+                        <>
+                          {' '}· <span className="text-emerald-700 font-bold">सही {resultMetrics.correct}</span> ·{' '}
+                          <span className="text-rose-700 font-bold">गलत {resultMetrics.wrong}</span>
+                        </>
                       )}
-                    </button>
-                  );
-                })}
-              </div>
+                    </p>
+                  </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() =>
-                      setMarkedReview((prev) => ({ ...prev, [currentQ.id]: !prev[currentQ.id] }))
-                    }
-                    className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 border cursor-pointer ${
-                      markedReview[currentQ.id]
-                        ? 'bg-purple-100 border-purple-400 text-purple-900'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Flag className="w-3.5 h-3.5" />
-                    <span>{markedReview[currentQ.id] ? 'समीक्षा चिह्नित' : 'पुनः समीक्षा (Review)'}</span>
-                  </button>
-
-                  {answers[currentQ.id] !== undefined && (
-                    <button
-                      onClick={() =>
-                        setAnswers((prev) => {
-                          const next = { ...prev };
-                          delete next[currentQ.id];
-                          return next;
-                        })
+                  <div className="grid grid-cols-5 gap-2 max-h-64 overflow-y-auto pr-1">
+                    {examQuestions.map((q, idx) => {
+                      const ansVal = answers[q.id];
+                      const isAnswered = ansVal !== undefined;
+                      const isMarked = Boolean(markedReview[q.id]);
+                      let cls = 'bg-slate-100 text-slate-700 border-slate-200';
+                      if (instantCheckMode && isAnswered) {
+                        cls =
+                          ansVal === q.correctIndex
+                            ? 'bg-emerald-600 text-white border-emerald-600'
+                            : 'bg-rose-600 text-white border-rose-600';
+                      } else if (isMarked && isAnswered) {
+                        cls = 'bg-indigo-600 text-white border-indigo-600';
+                      } else if (isMarked) {
+                        cls = 'bg-purple-600 text-white border-purple-600';
+                      } else if (isAnswered) {
+                        cls = 'bg-sky-600 text-white border-sky-600';
                       }
-                      className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
-                    >
-                      चयन साफ़ करें (Clear)
-                    </button>
-                  )}
-                </div>
+                      if (idx === currentIdx) cls += ' ring-2 ring-amber-500 ring-offset-1';
 
-                <div className="flex items-center gap-2">
-                  <button
-                    disabled={currentIdx === 0}
-                    onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-800 rounded-xl text-xs font-bold cursor-pointer"
-                  >
-                    ← पिछला
-                  </button>
+                      return (
+                        <button
+                          key={q.id}
+                          onClick={() => setCurrentIdx(idx)}
+                          className={`py-2 rounded-lg border text-xs font-mono font-bold cursor-pointer ${cls}`}
+                        >
+                          {idx + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                  {currentIdx < examQuestions.length - 1 ? (
-                    <button
-                      onClick={() => setCurrentIdx((i) => Math.min(examQuestions.length - 1, i + 1))}
-                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer"
-                    >
-                      सहेजें व अगला →
-                    </button>
-                  ) : (
+                  <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-600 pt-2 border-t border-slate-100">
+                    {instantCheckMode ? (
+                      <>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-3 h-3 rounded bg-emerald-600 inline-block" /> सही उत्तर
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-3 h-3 rounded bg-rose-600 inline-block" /> गलत उत्तर
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-3 h-3 rounded bg-purple-600 inline-block" /> समीक्षा चिह्नित
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-3 h-3 rounded bg-slate-200 inline-block" /> अनुत्तरित
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-3 h-3 rounded bg-sky-600 inline-block" /> उत्तरित (जाँच शेष)
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-3 h-3 rounded bg-purple-600 inline-block" /> समीक्षा चिह्नित
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-3 h-3 rounded bg-slate-200 inline-block" /> अनुत्तरित
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
                     <button
                       onClick={() => setShowSubmitConfirm(true)}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+                      className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs cursor-pointer"
                     >
-                      परीक्षा सबमिट करें ✓
+                      अंतिम परीक्षा सबमिट करें (Finish Exam)
                     </button>
-                  )}
+                    <button
+                      onClick={() => setPhase('setup')}
+                      className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs cursor-pointer"
+                    >
+                      परीक्षा बाहर निकलें (Back)
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Right Sidebar: OMR Palette */}
-            <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-slate-900">OMR प्रश्न पैलेट</h3>
-                <p className="text-xs text-slate-500 font-mono tabular-nums">
-                  उत्तरित: {Object.keys(answers).length} / {examQuestions.length}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-5 gap-2 max-h-64 overflow-y-auto pr-1">
-                {examQuestions.map((q, idx) => {
-                  const isAnswered = answers[q.id] !== undefined;
-                  const isMarked = Boolean(markedReview[q.id]);
-                  let cls = 'bg-slate-100 text-slate-700 border-slate-200';
-                  if (isMarked && isAnswered) cls = 'bg-indigo-600 text-white border-indigo-600';
-                  else if (isMarked) cls = 'bg-purple-600 text-white border-purple-600';
-                  else if (isAnswered) cls = 'bg-emerald-600 text-white border-emerald-600';
-                  if (idx === currentIdx) cls += ' ring-2 ring-amber-500 ring-offset-1';
-
-                  return (
-                    <button
-                      key={q.id}
-                      onClick={() => setCurrentIdx(idx)}
-                      className={`py-2 rounded-lg border text-xs font-mono font-bold cursor-pointer ${cls}`}
-                    >
-                      {idx + 1}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-600 pt-2 border-t border-slate-100">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded bg-emerald-600 inline-block" /> उत्तरित
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded bg-purple-600 inline-block" /> समीक्षा चिह्नित
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded bg-slate-200 inline-block" /> अनुत्तरित
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <button
-                  onClick={() => setShowSubmitConfirm(true)}
-                  className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs cursor-pointer"
-                >
-                  अंतिम परीक्षा सबमिट करें (Finish Exam)
-                </button>
-                <button
-                  onClick={() => setPhase('setup')}
-                  className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs cursor-pointer"
-                >
-                  परीक्षा बाहर निकलें (Back)
-                </button>
-              </div>
-            </div>
-          </div>
             )}
           </div>
         )}

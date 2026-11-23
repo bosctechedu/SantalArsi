@@ -314,7 +314,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   const learningNav = useMemo(() => [
     { id: 'certification' as ActiveDesktopTab, label: 'भाषा परीक्षा व प्रमाणपत्र', icon: Award, badge: 'प्रमाणपत्र' },
     { id: 'phonetics_lab' as ActiveDesktopTab, label: '४ रुद्ध कंठ ध्वनियां (Phonetics)', icon: Activity, badge: 'रुद्ध ध्वनि' },
-    { id: 'grammar' as ActiveDesktopTab, label: 'संताली व्याकरण (रोनौड़)', icon: BookOpen, badge: 'नया' },
+    { id: 'santali_grammar_course' as ActiveDesktopTab, label: 'संपूर्ण संताली व्याकरण कोर्स व क्विज़ (20 अध्याय)', icon: GraduationCap, badge: '20 अध्याय' },
+    { id: 'grammar' as ActiveDesktopTab, label: 'संताली व्याकरण (रोनौड़)', icon: BookOpen, badge: 'लैब' },
     { id: 'greetings' as ActiveDesktopTab, label: 'पावन पर्व ई-कार्ड (बधाई)', icon: Sparkles, badge: 'कार्ड' },
     { id: 'phrasebook' as ActiveDesktopTab, label: 'दैनिक बोलचाल (Phrasebook)', icon: MessageSquare },
     { id: 'speech_coach' as ActiveDesktopTab, label: 'उच्चारण प्रशिक्षक (Coach)', icon: Mic },
@@ -393,7 +394,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
               />
             </div>
             <div>
-              <h2 className="text-xs font-black text-slate-900 leading-tight">Hor Katha Suite</h2>
+              <h2 className="text-xs font-black text-slate-900 leading-tight">Santal आ़रसी</h2>
               <p className="text-[10px] text-amber-800 font-bold">संताली देवनागरी मंच</p>
             </div>
           </div>
@@ -416,7 +417,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
             type="text"
             value={sidebarQuery}
             onChange={(e) => setSidebarQuery(e.target.value)}
-            placeholder="मेनू में तुरंत खोजें (Filter 168)..."
+            placeholder="मेनू में तुरंत खोजें (Filter 169)..."
             className="w-full pl-8 pr-7 py-1.5 text-[11px] bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400"
           />
           {sidebarQuery && (

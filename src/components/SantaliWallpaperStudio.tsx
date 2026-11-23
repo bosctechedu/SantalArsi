@@ -250,7 +250,7 @@ export const SantaliWallpaperStudio: React.FC = () => {
     // 11. Footer App Credit
     ctx.font = '24px system-ui, sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('होड़ काथा डिजिटल सुइट (Hor Katha Suite) • www.horkatha.org', width / 2, height - 160);
+    ctx.fillText('Santal आ़रसी • www.horkatha.org', width / 2, height - 160);
   };
 
   useEffect(() => {
@@ -267,7 +267,7 @@ export const SantaliWallpaperStudio: React.FC = () => {
   };
 
   const handleWhatsAppShare = () => {
-    const text = `📱 *संताली मोबाइल वॉलपेपर*\n"${activeQuote.devanagari}"\n_${activeQuote.hindi}_\n\nनिर्माता: *${userName}*\n(Hor Katha Suite)`;
+    const text = `📱 *संताली मोबाइल वॉलपेपर*\n"${activeQuote.devanagari}"\n_${activeQuote.hindi}_\n\nनिर्माता: *${userName}*\n(Santal आ़रसी)`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 

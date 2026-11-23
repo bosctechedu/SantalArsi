@@ -1,5 +1,5 @@
 /**
- * Voice Search & Speech Recognition Engine for Hor Katha Suite.
+ * Voice Search & Speech Recognition Engine for Santal आ़रसी.
  * Supports Web Speech API (SpeechRecognition / webkitSpeechRecognition)
  * with multi-language recognition (Hindi/Devanagari 'hi-IN' & English 'en-IN'/'en-US'),
  * real-time transcript streaming, gentle audio cues, and error handling.

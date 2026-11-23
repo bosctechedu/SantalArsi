@@ -82,7 +82,7 @@ export const OfflineIndicator: React.FC = () => {
           <button
             onClick={() => promptInstall()}
             className="h-8 px-2.5 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-2xs transition-all flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer border border-emerald-500/40 whitespace-nowrap"
-            title="Install Hor Katha Suite App on Device"
+            title="Install Santal आ़रसी App on Device"
             aria-label="Install App"
           >
             <Download className="w-3.5 h-3.5 text-white" />
@@ -124,7 +124,7 @@ export const OfflineIndicator: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-extrabold">Install Hor Katha on iPhone / iPad</h3>
+              <h3 className="text-base font-extrabold">Install Santal आ़रसी on iPhone / iPad</h3>
               <button
                 onClick={() => setShowIOSGuide(false)}
                 className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"
